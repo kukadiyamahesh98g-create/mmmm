@@ -306,6 +306,60 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
     }
   };
 
+  // Helper to compute unambiguous, unique final rankings for all active players in a match
+  const computeFinalMatchRankings = (
+    rankList: PlayerColor[] = finishedRankings,
+    elimMap: Record<PlayerColor, boolean> = eliminated,
+    cols: PlayerColor[] = activeColors,
+    tokenMap: Record<PlayerColor, TokenState[]> = tokens
+  ): PlayerColor[] => {
+    const result: PlayerColor[] = [];
+
+    // 1. First add players who finished all 4 tokens in exact order of finish from rankList
+    rankList.forEach((col) => {
+      if (cols.includes(col) && !result.includes(col)) {
+        result.push(col);
+      }
+    });
+
+    // Check if any active player has all 4 tokens finished but wasn't in rankList yet
+    cols.forEach((col) => {
+      if (
+        !result.includes(col) &&
+        tokenMap[col] &&
+        tokenMap[col].length > 0 &&
+        tokenMap[col].every((t) => t.position === 56)
+      ) {
+        result.push(col);
+      }
+    });
+
+    // 2. Next, add active non-eliminated players who haven't finished yet, ordered by:
+    //    a) Number of tokens finished at position 56 (descending)
+    //    b) Sum of token positions (descending)
+    const remainingActive = cols.filter(
+      (col) => !result.includes(col) && !elimMap[col]
+    );
+
+    remainingActive.sort((a, b) => {
+      const finishedA = tokenMap[a]?.filter((t) => t.position === 56).length || 0;
+      const finishedB = tokenMap[b]?.filter((t) => t.position === 56).length || 0;
+      if (finishedA !== finishedB) return finishedB - finishedA;
+
+      const progressA = tokenMap[a]?.reduce((sum, t) => sum + Math.max(0, t.position), 0) || 0;
+      const progressB = tokenMap[b]?.reduce((sum, t) => sum + Math.max(0, t.position), 0) || 0;
+      return progressB - progressA;
+    });
+
+    remainingActive.forEach((col) => result.push(col));
+
+    // 3. Finally, add eliminated players
+    const eliminatedPlayers = cols.filter((col) => !result.includes(col));
+    eliminatedPlayers.forEach((col) => result.push(col));
+
+    return result;
+  };
+
   // Get next active non-eliminated and non-finished player
   const getNextActivePlayer = (
     currentTurn: PlayerColor,
@@ -478,19 +532,25 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
       setTurnStatusText(`💔 ${activeTurn.toUpperCase()} ELIMINATED!`);
 
       // Check remaining active players
-      const activePlayers = TURN_SEQUENCE.filter((p) => !updatedEliminated[p]);
+      const remainingActivePlayers = activeColors.filter(
+        (p) => !updatedEliminated[p] && !finishedRankings.includes(p)
+      );
 
-      if (activePlayers.length === 1) {
+      if (remainingActivePlayers.length <= 1) {
         // Match finished!
+        const fullRankings = computeFinalMatchRankings(finishedRankings, updatedEliminated, activeColors, tokens);
+        setFinishedRankings(fullRankings);
         setTimeout(() => {
-          handleMatchEnd(activePlayers[0], updatedEliminated);
+          handleMatchEnd(fullRankings[0] || null, updatedEliminated, fullRankings);
         }, 1200);
         return;
       } else if (activeTurn === humanColor) {
         // Human eliminated
         setWasHumanEliminated(true);
+        const fullRankings = computeFinalMatchRankings(finishedRankings, updatedEliminated, activeColors, tokens);
+        setFinishedRankings(fullRankings);
         setTimeout(() => {
-          handleMatchEnd(null, updatedEliminated);
+          handleMatchEnd(null, updatedEliminated, fullRankings);
         }, 1200);
         return;
       }
@@ -647,8 +707,8 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
 
         setIsAnimating(false);
 
-        // Find remaining unfinished and non-eliminated players
-        const activeUnfinished = TURN_SEQUENCE.filter(
+        // Find remaining unfinished and non-eliminated players among activeColors
+        const activeUnfinished = activeColors.filter(
           (p) => !eliminated[p] && !currentRankings.includes(p) && !checkPlayerFinished(latestTokens[p])
         );
 
@@ -657,10 +717,13 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
             const lastPlayer = activeUnfinished[0];
             if (!currentRankings.includes(lastPlayer)) {
               currentRankings.push(lastPlayer);
+              setFinishedRankings(currentRankings);
             }
           }
+          const fullRankings = computeFinalMatchRankings(currentRankings, eliminated, activeColors, latestTokens);
+          setFinishedRankings(fullRankings);
           setTimeout(() => {
-            handleMatchEnd(currentRankings[0], eliminated, currentRankings);
+            handleMatchEnd(fullRankings[0], eliminated, fullRankings);
           }, 1200);
           return;
         } else {
@@ -867,16 +930,13 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
     const isHumanElim = elimMap[humanColor];
     setWasHumanEliminated(isHumanElim);
 
+    const fullRankings = computeFinalMatchRankings(rankList, elimMap, activeColors, tokens);
+    setFinishedRankings(fullRankings);
+
+    const humanIndex = fullRankings.indexOf(humanColor);
     let place = gameMode === '1v1' ? 2 : 4;
-    if (!isHumanElim) {
-      const idxInRanks = rankList.indexOf(humanColor);
-      if (idxInRanks !== -1) {
-        place = idxInRanks + 1;
-      } else if (winner === humanColor) {
-        place = 1;
-      } else {
-        place = rankList.length + 1;
-      }
+    if (!isHumanElim && humanIndex !== -1) {
+      place = humanIndex + 1;
     }
 
     setHumanPlace(place);
@@ -1346,6 +1406,8 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
             }}
             lifelines={lifelines}
             eliminated={eliminated}
+            finishedRankings={finishedRankings}
+            activeColors={activeColors}
             timeLeft={timeLeft}
             humanColor={humanColor}
             playerTypes={playerTypes}
@@ -1486,15 +1548,8 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
               </span>
 
               <div className="space-y-1.5 font-mono text-xs">
-                {TURN_SEQUENCE.filter((col) => !eliminated[col] || finishedRankings.includes(col))
-                  .sort((a, b) => {
-                    const idxA = finishedRankings.indexOf(a);
-                    const idxB = finishedRankings.indexOf(b);
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    if (idxA !== -1) return -1;
-                    if (idxB !== -1) return 1;
-                    return 0;
-                  })
+                {Array.from(new Set([...finishedRankings, ...activeColors]))
+                  .filter((col) => activeColors.includes(col))
                   .map((col, i) => {
                     const isHuman = col === humanColor;
                     const rankNum = i + 1;

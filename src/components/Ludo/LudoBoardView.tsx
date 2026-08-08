@@ -1,5 +1,7 @@
 import React from 'react';
 import { PlayerColor, TokenState, MoveOption } from '../../types/ludo';
+
+const ALL_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 import {
   getTokenCoordinate,
   SAFE_TRACK_INDICES,
@@ -19,6 +21,7 @@ interface LudoBoardViewProps {
   lifelines: Record<PlayerColor, number>;
   eliminated: Record<PlayerColor, boolean>;
   finishedRankings?: PlayerColor[];
+  activeColors?: PlayerColor[];
   timeLeft: number;
   humanColor: PlayerColor;
   playerTypes?: Record<PlayerColor, 'human' | 'friend' | 'ai'>;
@@ -230,6 +233,7 @@ export const LudoBoardView: React.FC<LudoBoardViewProps> = ({
   lifelines,
   eliminated,
   finishedRankings = [],
+  activeColors,
   timeLeft,
   humanColor,
   playerTypes,
@@ -352,14 +356,26 @@ export const LudoBoardView: React.FC<LudoBoardViewProps> = ({
   const visualCorners = getCornerColors(humanColor);
 
   const getPlayerRankInfo = (col: PlayerColor) => {
-    const isFinished =
-      finishedRankings.includes(col) ||
-      (tokens[col] && tokens[col].length > 0 && tokens[col].every((t) => t.position === 56));
-    if (!isFinished) return null;
+    if (activeColors && !activeColors.includes(col)) return null;
 
     let rIdx = finishedRankings.indexOf(col);
+
     if (rIdx === -1) {
-      rIdx = finishedRankings.length;
+      const allAtFinish =
+        tokens[col] && tokens[col].length > 0 && tokens[col].every((t) => t.position === 56);
+      if (!allAtFinish) return null;
+
+      const unindexedFinished = ALL_COLORS.filter(
+        (c) =>
+          (!activeColors || activeColors.includes(c)) &&
+          !finishedRankings.includes(c) &&
+          tokens[c] &&
+          tokens[c].length > 0 &&
+          tokens[c].every((t) => t.position === 56)
+      );
+      const unindexedIdx = unindexedFinished.indexOf(col);
+      if (unindexedIdx === -1) return null;
+      rIdx = finishedRankings.length + unindexedIdx;
     }
 
     if (rIdx === 0) {
