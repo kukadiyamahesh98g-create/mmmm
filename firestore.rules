@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        request.auth.token.email == 'kukadiyamahesh07@gmail.com' ||
+        request.auth.token.email == 'admin@1xluck.com'
+      );
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Lucky Draws collection
+    match /luckyDraws/{drawId} {
+      allow read: if true;
+      allow write: if isSignedIn(); // Users purchase tickets or Admin modifies
+    }
+
+    // Tickets collection
+    match /tickets/{ticketId} {
+      allow read: if true; // Public transparency verification
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Winners collection
+    match /winners/{winnerId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Coin Transactions collection
+    match /coinTransactions/{txId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications collection
+    match /notifications/{notifId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Settings collection
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+  }
+}

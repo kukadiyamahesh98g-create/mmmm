@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "User profiles and account statistics",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "city": { "type": "string" },
+        "coinBalance": { "type": "number" },
+        "totalTicketsBought": { "type": "number" },
+        "isBanned": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isProfileCompleted": { "type": "boolean" }
+      },
+      "required": ["uid", "email", "displayName"]
+    },
+    "luckyDraws": {
+      "title": "Lucky Draws",
+      "description": "Lucky draw events and status",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "totalTickets": { "type": "number" },
+        "soldTickets": { "type": "number" },
+        "ticketPriceCoins": { "type": "number" },
+        "prizeAmount": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "completed", "cancelled"] },
+        "winnerTicketNumber": { "type": "number" },
+        "winnerUid": { "type": "string" },
+        "winnerName": { "type": "string" },
+        "winnerMaskedMobile": { "type": "string" },
+        "winnerCity": { "type": "string" },
+        "drawDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "totalTickets", "soldTickets", "ticketPriceCoins", "prizeAmount", "status"]
+    },
+    "tickets": {
+      "title": "Tickets",
+      "description": "Purchased lucky draw tickets",
+      "type": "object",
+      "properties": {
+        "drawId": { "type": "string" },
+        "ticketNumber": { "type": "number" },
+        "userUid": { "type": "string" },
+        "userName": { "type": "string" },
+        "userMobileMasked": { "type": "string" },
+        "userCity": { "type": "string" },
+        "purchasedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["drawId", "ticketNumber", "userUid", "userName"]
+    },
+    "winners": {
+      "title": "Winners",
+      "description": "Past lucky draw winners hall of fame",
+      "type": "object",
+      "properties": {
+        "drawId": { "type": "string" },
+        "drawTitle": { "type": "string" },
+        "ticketNumber": { "type": "number" },
+        "winnerUid": { "type": "string" },
+        "winnerName": { "type": "string" },
+        "winnerMaskedMobile": { "type": "string" },
+        "winnerCity": { "type": "string" },
+        "prizeAmount": { "type": "string" },
+        "drawDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["drawId", "ticketNumber", "winnerName", "prizeAmount"]
+    },
+    "coinTransactions": {
+      "title": "Coin Transactions",
+      "description": "Coin transaction history for users",
+      "type": "object",
+      "properties": {
+        "userUid": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userUid", "amount", "type", "description"]
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "App notifications sent to users",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "targetUserUid": { "type": "string" }
+      },
+      "required": ["title", "body"]
+    },
+    "settings": {
+      "title": "App Settings",
+      "description": "Global application configuration controlled by Admin",
+      "type": "object",
+      "properties": {
+        "youtubeLiveUrl": { "type": "string" },
+        "isLiveActive": { "type": "boolean" },
+        "dailySpinLimit": { "type": "number" },
+        "announcement": { "type": "string" }
+      }
+    }
+  }
+}

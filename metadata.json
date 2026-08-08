@@ -1,0 +1,6 @@
+{
+  "name": "1X Luck",
+  "description": "Transparent Lucky Draw platform with interactive games, daily coin rewards, and live draw broadcasts",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
