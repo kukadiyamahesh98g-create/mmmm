@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Phone, Mail, Headphones, Info, FileText } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -10,6 +10,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { LegalModal, LegalDocType } from './components/LegalModal';
+import { AnnouncementModal } from './components/AnnouncementModal';
 import { LuckyDrawPage } from './pages/LuckyDrawPage';
 import { LudoPage } from './pages/LudoPage';
 import { SpinWinPage } from './pages/SpinWinPage';
@@ -22,6 +23,20 @@ export default function App() {
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalTab, setLegalTab] = useState<LegalDocType>('about');
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+
+  // Automatically show announcement popup on initial visit to Home Page
+  useEffect(() => {
+    const hasSeenAnnouncement = localStorage.getItem('1xluck_announcement_seen_v1');
+    if (!hasSeenAnnouncement) {
+      setAnnouncementModalOpen(true);
+    }
+  }, []);
+
+  const handleCloseAnnouncement = () => {
+    localStorage.setItem('1xluck_announcement_seen_v1', 'true');
+    setAnnouncementModalOpen(false);
+  };
 
   const handleOpenAuth = (mode: 'login' | 'signup' = 'login') => {
     setAuthMode(mode);
@@ -53,6 +68,7 @@ export default function App() {
             setActiveTab={setActiveTab}
             onOpenAuth={handleOpenAuth}
             onToggleNotifs={() => setNotifDrawerOpen(true)}
+            onOpenAnnouncement={() => setAnnouncementModalOpen(true)}
           />
 
           {/* Top Real-Time Notification Bar */}
@@ -75,7 +91,11 @@ export default function App() {
             ) : activeTab === 'admin' ? (
               <AdminPanel />
             ) : (
-              <HomeScreen setActiveTab={setActiveTab} onOpenAuth={handleOpenAuth} />
+              <HomeScreen 
+                setActiveTab={setActiveTab} 
+                onOpenAuth={handleOpenAuth}
+                onOpenAnnouncement={() => setAnnouncementModalOpen(true)}
+              />
             )}
           </main>
 
@@ -154,6 +174,13 @@ export default function App() {
             isOpen={legalModalOpen}
             initialTab={legalTab}
             onClose={() => setLegalModalOpen(false)}
+          />
+
+          {/* Announcement Modal */}
+          <AnnouncementModal
+            isOpen={announcementModalOpen}
+            onClose={handleCloseAnnouncement}
+            onOpenLegal={openLegal}
           />
 
         </div>

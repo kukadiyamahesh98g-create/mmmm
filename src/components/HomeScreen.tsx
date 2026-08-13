@@ -18,15 +18,17 @@ import {
   Star,
   ChevronRight,
   Flame,
-  Award
+  Award,
+  Megaphone
 } from 'lucide-react';
 
 interface HomeScreenProps {
   setActiveTab?: (tab: string) => void;
   onOpenAuth: (mode?: 'login' | 'signup') => void;
+  onOpenAnnouncement?: () => void;
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveTab, onOpenAuth }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveTab, onOpenAuth, onOpenAnnouncement }) => {
   const { userProfile, currentUser } = useAuth();
   const [activeFeature, setActiveFeature] = useState<'draw' | 'ludo' | 'spin' | 'live'>('draw');
   const [selectedDrawCategory, setSelectedDrawCategory] = useState<'daily' | 'weekly' | 'monthly'>('daily');
@@ -83,14 +85,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveTab, onOpenAuth
           </div>
         </div>
 
-        {!currentUser && (
-          <button
-            onClick={() => onOpenAuth('signup')}
-            className="py-2 px-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow active:scale-95 cursor-pointer shrink-0"
-          >
-            Sign Up
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onOpenAnnouncement && (
+            <button
+              onClick={onOpenAnnouncement}
+              className="py-2 px-3 sm:px-4 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow active:scale-95 cursor-pointer shrink-0 flex items-center gap-1.5"
+            >
+              <Megaphone className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span>Announcements</span>
+            </button>
+          )}
+
+          {!currentUser && (
+            <button
+              onClick={() => onOpenAuth('signup')}
+              className="py-2 px-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow active:scale-95 cursor-pointer shrink-0"
+            >
+              Sign Up
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Section Header */}

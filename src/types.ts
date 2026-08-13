@@ -10,6 +10,7 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string;
   isProfileCompleted?: boolean;
+  photoURL?: string;
 }
 
 export interface LuckyDraw {
@@ -87,4 +88,17 @@ export interface AppSettings {
 export interface DailyRewardStatus {
   lastClaimDate: string | null; // YYYY-MM-DD
   currentStreak: number; // 1 to 7
+}
+
+export interface UserQuery {
+  id: string;
+  userUid: string;
+  userName: string;
+  userEmail: string;
+  subject: string;
+  question: string;
+  status: 'Pending' | 'In Progress' | 'Resolved';
+  adminReply?: string;
+  createdAt: string;
+  updatedAt?: string;
 }

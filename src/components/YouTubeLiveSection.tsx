@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Youtube, ExternalLink, Radio, Tv, Clock, Play, AlertCircle } from 'lucide-react';
+import { Youtube, ExternalLink, Radio, Tv, Clock, Play, AlertCircle, HelpCircle } from 'lucide-react';
+import { YouTubeLiveWelcomeModal } from './YouTubeLiveWelcomeModal';
 
 export const YouTubeLiveSection: React.FC = () => {
   const [liveUrl, setLiveUrl] = useState<string>('https://www.youtube.com/embed/live_stream?channel=UC_x5XG1OV2P6uZZ5FSM9Ttw');
   const [isLiveActive, setIsLiveActive] = useState<boolean>(true);
   const [videoTitle, setVideoTitle] = useState<string>('1X Luck - Live Draw & Winner Announcement');
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
 
   useEffect(() => {
     const path = 'settings/app_config';
@@ -73,16 +75,27 @@ export const YouTubeLiveSection: React.FC = () => {
           <h2 className="font-bold text-white text-xs truncate font-mono">{videoTitle}</h2>
         </div>
 
-        <a
-          href={directUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="px-2.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase font-mono rounded-xl transition flex items-center gap-1.5 shrink-0 active:scale-95 shadow"
-        >
-          <Youtube className="w-3.5 h-3.5" />
-          <span>YouTube</span>
-          <ExternalLink className="w-2.5 h-2.5" />
-        </a>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => setShowWelcomeModal(true)}
+            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-xl transition flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer active:scale-95 shadow-sm"
+            title="YouTube Live Stream Guide"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-red-400" />
+            <span className="hidden sm:inline">Guide</span>
+          </button>
+
+          <a
+            href={directUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="px-2.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase font-mono rounded-xl transition flex items-center gap-1.5 shrink-0 active:scale-95 shadow"
+          >
+            <Youtube className="w-3.5 h-3.5" />
+            <span>YouTube</span>
+            <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        </div>
       </div>
 
       {/* Main Video Player Container or Offline Placeholder */}
@@ -146,6 +159,13 @@ export const YouTubeLiveSection: React.FC = () => {
           All ticket draws and lucky wheel announcements are broadcast live with on-screen randomizers for 100% fair and verifiable results.
         </p>
       </div>
+
+      {/* YouTube Live Welcome & Info Modal */}
+      <YouTubeLiveWelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+        directUrl={directUrl}
+      />
 
     </div>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Bell, Shield, LogOut, Sparkles } from 'lucide-react';
+import { Bell, Shield, LogOut, Sparkles, Megaphone } from 'lucide-react';
 
 interface HeaderProps {
   activeTab: string;
@@ -9,13 +9,15 @@ interface HeaderProps {
   onOpenAuth: (mode?: 'login' | 'signup') => void;
   unreadNotifsCount?: number;
   onToggleNotifs: () => void;
+  onOpenAnnouncement?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onOpenAuth,
-  onToggleNotifs
+  onToggleNotifs,
+  onOpenAnnouncement
 }) => {
   const { userProfile, currentUser, logout } = useAuth();
   const { unreadCount } = useNotifications();
@@ -46,7 +48,19 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Status Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {/* Announcements / Info Button */}
+          {onOpenAnnouncement && (
+            <button
+              onClick={onOpenAnnouncement}
+              className="p-2 text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/30 transition cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+              title="Announcements & Platform Rules"
+            >
+              <Megaphone className="w-4 h-4 text-amber-400" />
+              <span className="hidden md:inline font-mono text-[11px] font-bold uppercase tracking-wider">Announcements</span>
+            </button>
+          )}
+
           {currentUser && userProfile ? (
             <>
               {/* Notification Bell */}

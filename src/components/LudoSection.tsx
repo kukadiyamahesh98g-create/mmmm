@@ -5,6 +5,7 @@ import { getValidMoves, checkPlayerFinished, getMovementPath, calculateFairDiceR
 import { selectBestAiMove } from '../lib/ludoAi';
 import { soundEngine } from '../lib/soundEngine';
 import { LudoBoardView } from './Ludo/LudoBoardView';
+import { LudoWelcomeModal } from './Ludo/LudoWelcomeModal';
 import {
   Gamepad2,
   Trophy,
@@ -189,6 +190,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
 
   // Modals & Rules & Chat Claim State
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showLudoWelcomePopup, setShowLudoWelcomePopup] = useState<boolean>(true);
   const [humanPlace, setHumanPlace] = useState<number>(1); // 1st, 2nd, 3rd, 4th
   const [wasHumanEliminated, setWasHumanEliminated] = useState<boolean>(false);
   const [chatClaimMessage, setChatClaimMessage] = useState<string>('');
@@ -1025,23 +1027,37 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
       {(screen === 'splash' || screen === 'home') && (
         <div className="w-full bg-slate-900/95 border border-slate-800 rounded-3xl p-4 sm:p-5 text-center space-y-3.5 shadow-2xl flex flex-col items-center justify-center my-auto">
           {/* Header Branding */}
-          <div className="flex items-center gap-3 text-left w-full border-b border-slate-800/80 pb-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 p-0.5 shadow-lg shrink-0">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                <Gamepad2 className="w-6 h-6 text-amber-400" />
+          <div className="flex items-center justify-between gap-3 text-left w-full border-b border-slate-800/80 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 p-0.5 shadow-lg shrink-0">
+                <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                  <Gamepad2 className="w-6 h-6 text-amber-400" />
+                </div>
+              </div>
+              <div>
+                <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-[9px] font-mono font-bold text-blue-400 uppercase tracking-wider">
+                  5 LIFELINES ARENA
+                </span>
+                <h1 className="text-lg font-black italic uppercase tracking-tight text-white leading-tight">
+                  LUDO <span className="text-amber-400">CHAMPIONSHIP</span>
+                </h1>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  15s Turn Timer • 5 Lifelines • Real Rewards
+                </p>
               </div>
             </div>
-            <div>
-              <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-[9px] font-mono font-bold text-blue-400 uppercase tracking-wider">
-                5 LIFELINES ARENA
-              </span>
-              <h1 className="text-lg font-black italic uppercase tracking-tight text-white leading-tight">
-                LUDO <span className="text-amber-400">CHAMPIONSHIP</span>
-              </h1>
-              <p className="text-[10px] text-slate-400 font-mono">
-                15s Turn Timer • 5 Lifelines • Real Rewards
-              </p>
-            </div>
+
+            <button
+              onClick={() => {
+                soundEngine.playButtonClick();
+                setShowLudoWelcomePopup(true);
+              }}
+              className="p-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl transition flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider shrink-0 cursor-pointer active:scale-95 shadow-sm"
+              title="Ludo Game Guide & Rules"
+            >
+              <HelpCircle className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">Guide</span>
+            </button>
           </div>
 
           {/* 1. Game Mode Selector */}
@@ -1741,6 +1757,12 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
             ? 'Watch ad to start Ludo match'
             : `Watch ad to unlock +${getRewardForPlace(humanPlace)} Coins reward`
         }
+      />
+
+      {/* Welcome & Info Popup */}
+      <LudoWelcomeModal
+        isOpen={showLudoWelcomePopup}
+        onClose={() => setShowLudoWelcomePopup(false)}
       />
 
     </div>

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Coins, Sparkles, Clock, Info } from 'lucide-react';
+import { Coins, Sparkles, Clock, Info, HelpCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AdModal } from './AdModal';
+import { LuckySpinWelcomeModal } from './LuckySpinWelcomeModal';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { OfflineOverlay } from './OfflineOverlay';
 
@@ -42,6 +43,7 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
   const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
   const [showAdModal, setShowAdModal] = useState<boolean>(false);
   const [offlineError, setOfflineError] = useState<string | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
 
   // Load last spin timestamp from localStorage for current user
   useEffect(() => {
@@ -201,17 +203,28 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
           <span>One spin available every hour</span>
         </div>
 
-        {canSpin ? (
-          <span className="text-xs font-mono font-black text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded uppercase tracking-wider animate-pulse">
-            READY!
-          </span>
-        ) : (
-          <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-            <span className="text-xs font-mono font-black text-amber-300">
-              {formatCountdown(secondsRemaining)}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowWelcomeModal(true)}
+            className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg transition flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer active:scale-95 shadow-sm"
+            title="Lucky Spin Guide & Rules"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Guide</span>
+          </button>
+
+          {canSpin ? (
+            <span className="text-xs font-mono font-black text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded uppercase tracking-wider animate-pulse">
+              READY!
             </span>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+              <span className="text-xs font-mono font-black text-amber-300">
+                {formatCountdown(secondsRemaining)}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Wheel Stage */}
@@ -356,6 +369,12 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
         onAdFinished={handleAdFinished}
         actionType="spin"
         rewardText="Watch ad and spin to win coins"
+      />
+
+      {/* Lucky Spin Welcome & Info Popup */}
+      <LuckySpinWelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
       />
     </div>
   );

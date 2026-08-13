@@ -110,37 +110,37 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           <div className="flex-1 p-6 overflow-y-auto space-y-4">
             {activeTab === 'about' && (
               <div className="space-y-4 font-sans text-slate-300 text-sm leading-relaxed">
-                <div className="flex items-center gap-2 pb-3 border-b border-slate-800 text-amber-400 font-mono font-bold text-base uppercase">
-                  <Info className="w-5 h-5 text-amber-400" />
-                  <span>About 1X Luck</span>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
-                  <p className="font-semibold text-white text-base">
-                    Welcome to 1X Luck.
-                  </p>
-                  <p>
-                    1X Luck is an online rewards and entertainment platform where users can enjoy skill-based games, earn virtual coins, and participate in lucky draw events according to the platform rules.
-                  </p>
-                  <p>
-                    Our mission is to provide a secure, transparent, and enjoyable experience for every user. We are committed to fairness, user privacy, and continuous improvement of our platform. Our goal is to create a fun and trusted platform where users can play games, earn rewards, and enjoy a smooth user experience.
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-1">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 mx-auto" />
-                    <div className="text-xs font-bold text-white font-mono uppercase">Transparent Draws</div>
-                    <div className="text-[11px] text-slate-400">PDF spreadsheets & verification</div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-amber-400 font-mono font-bold text-base uppercase">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-5 h-5 text-amber-400" />
+                    <span>About 1X Luck</span>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-1">
-                    <CheckCircle2 className="w-5 h-5 text-amber-400 mx-auto" />
-                    <div className="text-xs font-bold text-white font-mono uppercase">Skill Games</div>
-                    <div className="text-[11px] text-slate-400">Ludo, Spin & Win, Lucky Draw</div>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-1">
-                    <CheckCircle2 className="w-5 h-5 text-cyan-400 mx-auto" />
-                    <div className="text-xs font-bold text-white font-mono uppercase">Secure Platform</div>
-                    <div className="text-[11px] text-slate-400">Firebase Encrypted Auth</div>
+                  <span className="text-xs text-slate-400 font-normal font-mono normal-case">
+                    Our Platform & Mission
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4 text-xs text-slate-300">
+                  <p className="text-sm sm:text-base text-white font-medium leading-relaxed">
+                    Welcome to 1X Luck, a platform built to bring simple, fun and fair gaming experiences to everyone. We offer popular games like Ludo and Lucky Spin, where players can earn coins through gameplay. These coins can be used to participate in our Lucky Draw events, with winners announced during our official YouTube Live streams. At 1X Luck, we believe in fair play, transparency, and user safety. Our goal is to create a trusted space where players can enjoy games, compete fairly, and have a little more excitement along the way. If you ever need help or have questions, our team is available through the Contact Us page or the Query section.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-1">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 mx-auto" />
+                      <div className="text-xs font-bold text-white font-mono uppercase">Fair Play</div>
+                      <div className="text-[11px] text-slate-400">Simple & transparent gaming</div>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-1">
+                      <CheckCircle2 className="w-5 h-5 text-amber-400 mx-auto" />
+                      <div className="text-xs font-bold text-white font-mono uppercase">Ludo & Spin</div>
+                      <div className="text-[11px] text-slate-400">Earn coins through gameplay</div>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-1">
+                      <CheckCircle2 className="w-5 h-5 text-cyan-400 mx-auto" />
+                      <div className="text-xs font-bold text-white font-mono uppercase">Live Streams</div>
+                      <div className="text-[11px] text-slate-400">Official YouTube Live draws</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -148,21 +148,85 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
             {activeTab === 'privacy' && (
               <div className="space-y-4 font-sans text-slate-300 text-sm leading-relaxed">
-                <div className="flex items-center gap-2 pb-3 border-b border-slate-800 text-amber-400 font-mono font-bold text-base uppercase">
-                  <ShieldCheck className="w-5 h-5 text-amber-400" />
-                  <span>Privacy Policy</span>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
-                  <p>
-                    Your privacy is important to us. This website is committed to protecting your personal information. We may collect basic information such as your name, mobile number, email address, IP address, and device information when you use our services.
-                  </p>
-                  <p>
-                    We use this information to create and manage your account, improve our services, send important notifications, prevent fraud, and ensure platform security. We may use cookies and similar technologies to enhance your browsing experience.
-                  </p>
-                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold text-xs flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span>We do not sell your personal information to third parties.</span>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-amber-400 font-mono font-bold text-base uppercase">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-amber-400" />
+                    <span>Privacy Policy</span>
                   </div>
+                  <span className="text-xs text-slate-400 font-normal font-mono normal-case">
+                    Official Policy
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4 text-xs text-slate-300">
+                  <p className="text-sm text-white font-medium leading-relaxed">
+                    Welcome to 1X Luck. We value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, and protect your information when you use our website and services.
+                  </p>
+
+                  <ol className="list-none space-y-3 pt-1">
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">1. Information We Collect</strong>
+                      <p>
+                        We may collect full name, mobile number, account information, game progress, coin balance, lucky draw ticket information, queries, support requests, and device information such as browser type and IP address.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">2. How We Use Your Information</strong>
+                      <p>
+                        We use your information to create and manage your account, save your game progress and coin balance, process lucky draw participation, contact lucky draw winners, respond to support requests, improve website performance and user experience, and prevent fraud or misuse.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">3. Ludo, Lucky Spin and Lucky Draw</strong>
+                      <p>
+                        Players can earn coins by playing Ludo and using the Lucky Spin feature. These coins can be used to obtain Lucky Draw tickets according to the rules of each event. Lucky Draw winners are announced during our official YouTube Live broadcasts, and prize details, event schedules, and winner announcements are published before each event.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">4. Cookies</strong>
+                      <p>
+                        We may use cookies and similar technologies to improve website performance, remember preferences, and enhance user experience.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">5. Data Security</strong>
+                      <p>
+                        We use reasonable security measures to protect your personal information, but no online platform can guarantee 100% security.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">6. Third-Party Services</strong>
+                      <p>
+                        Our website may use trusted third-party services such as Google AdSense, Firebase, and YouTube, each with its own privacy policies and terms.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">7. Contact Us</strong>
+                      <p>
+                        If you have any questions about this Privacy Policy, please contact us through the Contact Us page or submit your request through the Query section.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">8. Changes to This Privacy Policy</strong>
+                      <p>
+                        We may update this Privacy Policy from time to time. Any changes will be posted on this page with a revised date.
+                      </p>
+                    </li>
+
+                    <li className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-1">
+                      <strong className="text-amber-300 font-mono text-xs uppercase block">9. Your Consent</strong>
+                      <p className="text-slate-200">
+                        By using 1X Luck, you agree to this Privacy Policy and our Terms & Conditions.
+                      </p>
+                    </li>
+                  </ol>
                 </div>
               </div>
             )}
@@ -175,54 +239,79 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                     <span>Terms & Conditions</span>
                   </div>
                   <span className="text-xs text-slate-400 font-normal font-mono normal-case">
-                    Last Updated: July 29, 2026
+                    Official Terms
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
-                  <p className="text-xs text-slate-300">
-                    Welcome to 1X Luck. By accessing or using our website, you agree to comply with these terms. If you do not agree, please do not use our services.
+                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4 text-xs text-slate-300">
+                  <p className="text-sm text-white font-medium leading-relaxed">
+                    Welcome to 1X Luck. By accessing or using our website and services, you agree to comply with these Terms & Conditions. If you do not agree, please do not use our website.
                   </p>
 
-                  <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-300">
-                    <li className="pl-1">
-                      <strong className="text-white">User Eligibility:</strong> You must be at least 18 years old or meet the minimum legal age in your jurisdiction to use this website.
+                  <ol className="list-none space-y-3 pt-1">
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">1. User Account</strong>
+                      <p>
+                        Users must provide accurate information during registration. You are responsible for maintaining the confidentiality of your account and login credentials.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">User Account:</strong> You are responsible for keeping your account information secure and must provide accurate and up-to-date information during registration.
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">2. Games and Coins</strong>
+                      <p>
+                        Players can earn coins by participating in games such as Ludo and Lucky Spin. Coins are virtual rewards within the platform and have no cash value unless specifically stated by an official event.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Virtual Coins:</strong> The coins earned or used on this platform are virtual and intended only for use within the platform. They have no cash value unless explicitly stated by 1X Luck.
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">3. Lucky Draw</strong>
+                      <p>
+                        Coins may be used to purchase Lucky Draw as per event rules. Winners are announced during official YouTube Live streams.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Lucky Draw and Rewards:</strong> Participation in Lucky Draw events is subject to the rules displayed on the platform. Winners are selected according to the published rules. 1X Luck reserves the right to verify user eligibility before issuing any reward.
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">4. YouTube Live Streams</strong>
+                      <p>
+                        Live streams are used to announce winners, share prize information, and provide updates.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Fair Use Policy:</strong> Any attempt to cheat, exploit bugs, use automated tools, create multiple accounts, or engage in fraudulent activity may result in account suspension or permanent termination.
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">5. User Conduct</strong>
+                      <p>
+                        Users must use the platform fairly and respectfully. Cheating, hacking, or attempting to manipulate games is strictly prohibited.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Advertisements:</strong> Our platform may display advertisements from third-party advertising partners, including Google AdSense. We are not responsible for the content or policies of third-party ads.
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">6. Payments and Prizes</strong>
+                      <p>
+                        If applicable, prize details and distribution methods will be communicated clearly. All prizes are subject to the rules of each event.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Privacy:</strong> Your use of this website is also governed by our Privacy Policy.
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">7. Privacy</strong>
+                      <p>
+                        We collect minimal personal information to operate accounts and provide services.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Changes to Services:</strong> 1X Luck reserves the right to modify, suspend, or discontinue any feature, game, reward, or service at any time without prior notice.
+
+                    <li className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1">
+                      <strong className="text-amber-400 font-mono text-xs uppercase block">8. Changes to Terms</strong>
+                      <p>
+                        We may update these terms from time to time. Continued use of 1X Luck means you accept those changes. If you have any questions, reach us through the Contact Us page or the Query section.
+                      </p>
                     </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Limitation of Liability:</strong> 1X Luck shall not be liable for any indirect, incidental, or consequential damages arising from the use of this website.
-                    </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Governing Law:</strong> These Terms and Conditions shall be governed by the laws of India. Any disputes shall be subject to the jurisdiction of the appropriate courts in India.
-                    </li>
-                    <li className="pl-1">
-                      <strong className="text-white">Contact Us:</strong> If you have any questions regarding these Terms and Conditions, contact us at Email: <a href="mailto:kukadiyamahesh07@gmail.com" className="text-amber-400 hover:underline">kukadiyamahesh07@gmail.com</a>, Phone: <a href="tel:+919898874347" className="text-amber-400 hover:underline">+91 98988 74347</a>.
+
+                    <li className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-1">
+                      <strong className="text-amber-300 font-mono text-xs uppercase block">Agreement</strong>
+                      <p className="text-slate-200">
+                        By using this website, you agree to these Terms & Conditions and our Privacy Policy.
+                      </p>
                     </li>
                   </ol>
-
-                  <p className="font-semibold text-emerald-400 text-xs pt-2 border-t border-slate-800">
-                    By using 1X Luck, you acknowledge that you have read, understood, and agreed to these Terms and Conditions.
-                  </p>
                 </div>
               </div>
             )}

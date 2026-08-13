@@ -11,9 +11,10 @@ import {
   increment 
 } from 'firebase/firestore';
 import { LuckyDraw, Ticket } from '../types';
-import { Ticket as TicketIcon, Trophy, ShieldCheck, Coins, Sparkles, Clock, Calendar, Award } from 'lucide-react';
+import { Ticket as TicketIcon, Trophy, ShieldCheck, Coins, Sparkles, Clock, Calendar, Award, HelpCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LuckyDrawSpreadsheet } from './LuckyDrawSpreadsheet';
+import { LuckyDrawWelcomeModal } from './LuckyDrawWelcomeModal';
 
 export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenAuth }) => {
   const { userProfile, currentUser, deductCoins } = useAuth();
@@ -28,6 +29,7 @@ export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
 
   // Helper to categorize draws
   const getCategoryFromDraw = (draw: LuckyDraw): 'daily' | 'weekly' | 'monthly' => {
@@ -261,45 +263,57 @@ export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
   return (
     <div className="w-full flex flex-col gap-2.5 animate-in fade-in h-full overflow-hidden">
       
-      {/* Category Tabs: Daily / Weekly / Monthly */}
-      <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono shrink-0">
-        <button
-          type="button"
-          onClick={() => setDrawCategory('daily')}
-          className={`py-2 px-2 rounded-lg font-black uppercase transition flex items-center justify-center gap-1.5 cursor-pointer w-full text-center ${
-            drawCategory === 'daily'
-              ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">DAILY</span>
-        </button>
+      {/* Category Tabs: Daily / Weekly / Monthly + Guide Button */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex-1 grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => setDrawCategory('daily')}
+            className={`py-2 px-2 rounded-lg font-black uppercase transition flex items-center justify-center gap-1.5 cursor-pointer w-full text-center ${
+              drawCategory === 'daily'
+                ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">DAILY</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDrawCategory('weekly')}
+            className={`py-2 px-2 rounded-lg font-black uppercase transition flex items-center justify-center gap-1.5 cursor-pointer w-full text-center ${
+              drawCategory === 'weekly'
+                ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">WEEKLY</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDrawCategory('monthly')}
+            className={`py-2 px-2 rounded-lg font-black uppercase transition flex items-center justify-center gap-1.5 cursor-pointer w-full text-center ${
+              drawCategory === 'monthly'
+                ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">MONTHLY</span>
+          </button>
+        </div>
 
         <button
           type="button"
-          onClick={() => setDrawCategory('weekly')}
-          className={`py-2 px-2 rounded-lg font-black uppercase transition flex items-center justify-center gap-1.5 cursor-pointer w-full text-center ${
-            drawCategory === 'weekly'
-              ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
+          onClick={() => setShowWelcomeModal(true)}
+          className="py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl transition flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider shrink-0 cursor-pointer active:scale-95 shadow-sm"
+          title="Lucky Draw Guide & Rules"
         >
-          <Calendar className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">WEEKLY</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setDrawCategory('monthly')}
-          className={`py-2 px-2 rounded-lg font-black uppercase transition flex items-center justify-center gap-1.5 cursor-pointer w-full text-center ${
-            drawCategory === 'monthly'
-              ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
-        >
-          <Award className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">MONTHLY</span>
+          <HelpCircle className="w-4 h-4 text-amber-400" />
+          <span className="hidden sm:inline">Guide</span>
         </button>
       </div>
 
@@ -447,6 +461,12 @@ export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
           </div>
         </div>
       )}
+
+      {/* Lucky Draw Welcome & Info Popup */}
+      <LuckyDrawWelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+      />
     </div>
   );
 };
