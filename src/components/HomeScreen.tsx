@@ -4,6 +4,7 @@ import { LuckyDrawSection } from './LuckyDrawSection';
 import { LudoSection } from './LudoSection';
 import { LuckySpinSection } from './LuckySpinSection';
 import { YouTubeLiveSection } from './YouTubeLiveSection';
+import { NativeBannerAd } from './NativeBannerAd';
 import { 
   Trophy, 
   Gift, 
@@ -413,6 +414,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveTab, onOpenAuth
         </div>
 
       </div>
+
+      {/* Native Banner Ad */}
+      <NativeBannerAd />
 
       {/* ========================================================================= */}
     </div>
