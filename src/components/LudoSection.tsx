@@ -5,7 +5,6 @@ import { getValidMoves, checkPlayerFinished, getMovementPath, calculateFairDiceR
 import { selectBestAiMove } from '../lib/ludoAi';
 import { soundEngine } from '../lib/soundEngine';
 import { LudoBoardView } from './Ludo/LudoBoardView';
-import { LudoWelcomeModal } from './Ludo/LudoWelcomeModal';
 import {
   Gamepad2,
   Trophy,
@@ -190,7 +189,6 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
 
   // Modals & Rules & Chat Claim State
   const [showRulesModal, setShowRulesModal] = useState(false);
-  const [showLudoWelcomePopup, setShowLudoWelcomePopup] = useState<boolean>(true);
   const [humanPlace, setHumanPlace] = useState<number>(1); // 1st, 2nd, 3rd, 4th
   const [wasHumanEliminated, setWasHumanEliminated] = useState<boolean>(false);
   const [chatClaimMessage, setChatClaimMessage] = useState<string>('');
@@ -220,7 +218,10 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
       onOpenAuth();
       return;
     }
-    if (hasClaimedReward || wasHumanEliminated) return;
+    if (hasClaimedReward) return;
+
+    const prize = getHumanEligibleReward();
+    if (prize <= 0) return;
 
     const online = await checkOnline();
     if (!online) {
@@ -245,18 +246,23 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
       onOpenAuth();
       return;
     }
-    if (hasClaimedReward || wasHumanEliminated) return;
+    if (hasClaimedReward) return;
 
-    const prize = getRewardForPlace(humanPlace);
+    const prize = getHumanEligibleReward();
     if (prize <= 0) return;
 
     try {
+      const is4Player = activeColors.length === 4;
+      const desc = wasHumanEliminated
+        ? `Ludo 4-Player Eliminated Player Reward (+${prize} Coins)`
+        : `Ludo ${is4Player ? '4-Player' : '1v1'} ${
+            humanPlace === 1 ? '1st' : humanPlace === 2 ? '2nd' : humanPlace === 3 ? '3rd' : '4th'
+          } Place Reward (+${prize} Coins)`;
+
       await addCoins(
         prize,
         'ludo_win',
-        `Ludo ${gameMode === '1v1' ? '1v1' : 'Championship'} ${
-          humanPlace === 1 ? '1st' : humanPlace === 2 ? '2nd' : humanPlace === 3 ? '3rd' : '4th'
-        } Place Reward (+${prize} Coins)`
+        desc
       );
       setHasClaimedReward(true);
       setIsRewardUnlocked(true);
@@ -889,36 +895,53 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
     };
   }, [screen, activeTurn, diceValue, isRolling, isAnimating, validMoves, humanColor, tokens, eliminated, finishedRankings, playerTypes]);
 
-  // Calculate Prize Amount based on Place
-  const getRewardForPlace = (place: number): number => {
-    const totalPlayers = gameMode === '1v1' ? 2 : gameMode === '1v3' ? 4 : customPlayerCount;
-    if (totalPlayers === 2) {
-      return place === 1 ? 5 : place === 2 ? 2 : 0;
-    }
-    if (totalPlayers === 3) {
+  // Check if current match is 4-player mode
+  const is4PlayerMode = activeColors.length === 4;
+
+  // Calculate Prize Amount based on Place and Elimination status
+  const getRewardForPlace = (place: number, isPlayerEliminated: boolean = false): number => {
+    // 4-Player Mode: 1st: 10, 2nd: 8, 3rd: 6, 4th: 4, Eliminated: 2
+    if (activeColors.length === 4) {
+      if (isPlayerEliminated) {
+        return 2; // Eliminated Player in 4-Player mode: 2 coins
+      }
       switch (place) {
         case 1:
-          return 8;
+          return 10;
         case 2:
-          return 6;
+          return 8;
         case 3:
+          return 6;
+        case 4:
           return 4;
         default:
-          return 0;
+          return 4;
       }
     }
+
+    // 2-Player (1 vs 1) mode: Strictly unchanged (1st: 5, 2nd: 2)
+    if (activeColors.length === 2) {
+      if (isPlayerEliminated) return 0;
+      return place === 1 ? 5 : place === 2 ? 2 : 0;
+    }
+
+    // 3-Player custom mode
+    if (isPlayerEliminated) return 0;
     switch (place) {
       case 1:
-        return 10;
-      case 2:
         return 8;
-      case 3:
+      case 2:
         return 6;
-      case 4:
+      case 3:
         return 4;
       default:
         return 0;
     }
+  };
+
+  // Human player's eligible reward in current match
+  const getHumanEligibleReward = (): number => {
+    return getRewardForPlace(humanPlace, wasHumanEliminated);
   };
 
   // Handle Match End
@@ -943,17 +966,19 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
 
     setHumanPlace(place);
 
-    const prizeAmount = isHumanElim ? 0 : getRewardForPlace(place);
+    const prizeAmount = getRewardForPlace(place, isHumanElim);
 
     // Lock reward until player watches rewarded ad
     setHasClaimedReward(false);
     setIsRewardUnlocked(false);
 
-    if (!isHumanElim && prizeAmount > 0) {
+    if (prizeAmount > 0) {
       setChatClaimMessage(
-        `Finished ${
-          place === 1 ? '1st' : place === 2 ? '2nd' : place === 3 ? '3rd' : '4th'
-        } place in Ludo!`
+        isHumanElim
+          ? 'Finished Ludo match (Eliminated)!'
+          : `Finished ${
+              place === 1 ? '1st' : place === 2 ? '2nd' : place === 3 ? '3rd' : '4th'
+            } place in Ludo!`
       );
       setClaimStatusText(`🔒 Reward Locked — Watch Ad to unlock your +${prizeAmount} Coins reward!`);
     } else {
@@ -988,7 +1013,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
       return;
     }
 
-    const prize = getRewardForPlace(humanPlace);
+    const prize = getHumanEligibleReward();
     if (prize <= 0) return;
 
     await addCoins(
@@ -1046,18 +1071,6 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                 </p>
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                soundEngine.playButtonClick();
-                setShowLudoWelcomePopup(true);
-              }}
-              className="p-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl transition flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider shrink-0 cursor-pointer active:scale-95 shadow-sm"
-              title="Ludo Game Guide & Rules"
-            >
-              <HelpCircle className="w-4 h-4 text-amber-400" />
-              <span className="hidden sm:inline">Guide</span>
-            </button>
           </div>
 
           {/* 1. Game Mode Selector */}
@@ -1290,28 +1303,34 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
               </div>
             ) : (
               /* 4-Player Prize breakdown */
-              <div className="grid grid-cols-4 gap-1 text-center font-bold text-slate-200">
-                <div className="bg-amber-500/10 border border-amber-500/20 p-1 rounded">
-                  <span className="text-amber-400 block">1st</span>
-                  <span className="text-white">10 Coins</span>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-4 gap-1 text-center font-bold text-slate-200">
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-1 rounded">
+                    <span className="text-amber-400 block text-[10px]">🥇 1st</span>
+                    <span className="text-white text-xs font-black">10 Coins</span>
+                  </div>
+                  <div className="bg-slate-800/60 border border-slate-700 p-1 rounded">
+                    <span className="text-slate-300 block text-[10px]">🥈 2nd</span>
+                    <span className="text-white text-xs font-black">8 Coins</span>
+                  </div>
+                  <div className="bg-slate-800/60 border border-slate-700 p-1 rounded">
+                    <span className="text-amber-600 block text-[10px]">🥉 3rd</span>
+                    <span className="text-white text-xs font-black">6 Coins</span>
+                  </div>
+                  <div className="bg-slate-800/60 border border-slate-700 p-1 rounded">
+                    <span className="text-slate-400 block text-[10px]">4th</span>
+                    <span className="text-white text-xs font-black">4 Coins</span>
+                  </div>
                 </div>
-                <div className="bg-slate-800/60 border border-slate-700 p-1 rounded">
-                  <span className="text-slate-300 block">2nd</span>
-                  <span className="text-white">8 Coins</span>
-                </div>
-                <div className="bg-slate-800/60 border border-slate-700 p-1 rounded">
-                  <span className="text-amber-600 block">3rd</span>
-                  <span className="text-white">6 Coins</span>
-                </div>
-                <div className="bg-slate-800/60 border border-slate-700 p-1 rounded">
-                  <span className="text-slate-400 block">4th</span>
-                  <span className="text-white">4 Coins</span>
+                <div className="bg-red-500/10 border border-red-500/30 p-1 rounded flex items-center justify-between px-2 text-[10px] font-mono">
+                  <span className="text-red-400 font-bold">💔 Eliminated Player:</span>
+                  <span className="text-amber-300 font-bold">2 Coins</span>
                 </div>
               </div>
             )}
 
             <p className="text-[9px] text-slate-400 text-center leading-tight">
-              *Rewards given after match completion via Chat Claim. No reward if eliminated early.
+              * Watch rewarded ad after match to claim coins. Each reward can only be claimed once.
             </p>
           </div>
 
@@ -1502,20 +1521,94 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
       {/* 5. MATCH COMPLETED (WIN / RANKING / REWARD DISPLAY) */}
       {(screen === 'win' || screen === 'lose') && (
         wasHumanEliminated ? (
-          <div className="w-full max-w-sm bg-slate-900/95 border border-slate-800 rounded-3xl p-6 text-center space-y-6 shadow-2xl my-auto animate-in fade-in zoom-in-95">
-            <div className="space-y-2">
-              <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 shadow-inner">
+          <div className="w-full max-w-sm bg-slate-900/95 border border-slate-800 rounded-3xl p-5 text-center space-y-4 shadow-2xl my-auto animate-in fade-in zoom-in-95">
+            <div className="space-y-1.5">
+              <div className="w-14 h-14 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 shadow-inner">
                 <span className="text-2xl">💔</span>
               </div>
               <h2 className="text-xl font-black italic uppercase text-red-400 tracking-wider">
                 You are eliminated
               </h2>
+              {is4PlayerMode && (
+                <p className="text-xs text-amber-300 font-mono font-bold">
+                  Elimination Reward: +2 Coins
+                </p>
+              )}
             </div>
 
-            <div className="flex flex-col gap-3 font-mono">
+            {/* 4-Player Elimination Reward Box */}
+            {is4PlayerMode && (
+              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-3 space-y-2.5 text-left font-mono">
+                {!hasClaimedReward && !isRewardUnlocked ? (
+                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-bold flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Reward Locked: +2 Coins</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 border border-amber-400/30 rounded-md text-amber-300 uppercase shrink-0 font-bold">
+                      Ad Required
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-bold flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>+2 Coins Unlocked & Credited!</span>
+                    </div>
+                  </div>
+                )}
+
+                {!currentUser ? (
+                  <button
+                    onClick={onOpenAuth}
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Log in to claim +2 Coins</span>
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    {!hasClaimedReward ? (
+                      !isRewardUnlocked ? (
+                        <button
+                          onClick={handleClaimRewardWithAd}
+                          className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer animate-pulse"
+                        >
+                          <Play className="w-4 h-4 fill-slate-950" />
+                          <span>Watch Ad & Claim Coins (+2 Coins)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleExecuteClaimReward}
+                          className="w-full py-2.5 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(52,211,153,0.5)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Sparkles className="w-4 h-4 fill-slate-950" />
+                          <span>Claim 2 Coins Now!</span>
+                        </button>
+                      )
+                    ) : (
+                      <div className="w-full py-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Coins Credited (+2 Coins)</span>
+                      </div>
+                    )}
+
+                    {claimStatusText && (
+                      <p className={`text-[11px] font-bold text-center ${
+                        claimStatusText.includes('⚠️') ? 'text-rose-400' : claimStatusText.includes('🔒') ? 'text-amber-400' : 'text-emerald-400'
+                      }`}>
+                        {claimStatusText}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2.5 font-mono pt-1">
               <button
                 onClick={() => initGameMatch(humanColor)}
-                className="w-full py-3 px-5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition cursor-pointer shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition cursor-pointer shadow-lg active:scale-95 flex items-center justify-center gap-2"
               >
                 <RotateCcw className="w-4 h-4 text-slate-950" />
                 <span>Play again</span>
@@ -1528,7 +1621,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                     setScreen('splash');
                   }
                 }}
-                className="w-full py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs font-mono uppercase tracking-wider rounded-xl transition cursor-pointer border border-slate-700 active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs font-mono uppercase tracking-wider rounded-xl transition cursor-pointer border border-slate-700 active:scale-95 flex items-center justify-center gap-2"
               >
                 <LogOut className="w-4 h-4 text-slate-400" />
                 <span>Exit lobby</span>
@@ -1552,7 +1645,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                   YOU FINISHED {humanPlace === 1 ? '1ST PLACE 👑' : humanPlace === 2 ? '2ND PLACE 🥈' : humanPlace === 3 ? '3RD PLACE 🥉' : '4TH PLACE'}
                 </h2>
                 <p className="text-xs text-amber-300 font-mono font-bold">
-                  Rank Reward: +{getRewardForPlace(humanPlace)} Coins
+                  Rank Reward: +{getHumanEligibleReward()} Coins
                 </p>
               </div>
             </div>
@@ -1568,9 +1661,10 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                   .filter((col) => activeColors.includes(col))
                   .map((col, i) => {
                     const isHuman = col === humanColor;
+                    const isColElim = eliminated[col];
                     const rankNum = i + 1;
                     const rankLabel = rankNum === 1 ? '🥇 1st' : rankNum === 2 ? '🥈 2nd' : rankNum === 3 ? '🥉 3rd' : '4th';
-                    const coinsEarned = getRewardForPlace(rankNum);
+                    const coinsEarned = getRewardForPlace(rankNum, isColElim);
 
                     return (
                       <div
@@ -1582,7 +1676,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-xs font-black shrink-0">{rankLabel}</span>
+                          <span className="text-xs font-black shrink-0">{isColElim ? '💔 Elim' : rankLabel}</span>
                           <span className="truncate">{getPlayerLabel(col)} {isHuman && '(You)'}</span>
                         </div>
                         <span className="text-amber-400 font-bold text-[11px] shrink-0">
@@ -1595,14 +1689,14 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
             </div>
 
             {/* POST-GAME REWARD STATUS BOX */}
-            {getRewardForPlace(humanPlace) > 0 && (
+            {getHumanEligibleReward() > 0 && (
               <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-3 space-y-2.5 text-left">
                 {/* Header Badge */}
                 {!hasClaimedReward && !isRewardUnlocked ? (
                   <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-mono font-bold flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>Reward Locked: +{getRewardForPlace(humanPlace)} Coins</span>
+                      <span>Reward Locked: +{getHumanEligibleReward()} Coins</span>
                     </div>
                     <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 border border-amber-400/30 rounded-md text-amber-300 uppercase shrink-0 font-bold">
                       Ad Required
@@ -1612,7 +1706,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                   <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-mono font-bold flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>+{getRewardForPlace(humanPlace)} Coins Unlocked & Credited!</span>
+                      <span>+{getHumanEligibleReward()} Coins Unlocked & Credited!</span>
                     </div>
                   </div>
                 )}
@@ -1624,7 +1718,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                     className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <UserCheck className="w-4 h-4" />
-                    <span>Log in to claim +{getRewardForPlace(humanPlace)} Coins</span>
+                    <span>Log in to claim +{getHumanEligibleReward()} Coins</span>
                   </button>
                 ) : (
                   <div className="space-y-2">
@@ -1635,7 +1729,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                           className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer animate-pulse"
                         >
                           <Play className="w-4 h-4 fill-slate-950" />
-                          <span>Watch Ad & Claim Coins (+{getRewardForPlace(humanPlace)})</span>
+                          <span>Watch Ad & Claim Coins (+{getHumanEligibleReward()})</span>
                         </button>
                       ) : (
                         <button
@@ -1643,13 +1737,13 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                           className="w-full py-2.5 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(52,211,153,0.5)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                         >
                           <Sparkles className="w-4 h-4 fill-slate-950" />
-                          <span>Claim {getRewardForPlace(humanPlace)} Coins Now!</span>
+                          <span>Claim {getHumanEligibleReward()} Coins Now!</span>
                         </button>
                       )
                     ) : (
                       <div className="w-full py-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs font-mono uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span>Coins Credited (+{getRewardForPlace(humanPlace)} Coins)</span>
+                        <span>Coins Credited (+{getHumanEligibleReward()} Coins)</span>
                       </div>
                     )}
 
@@ -1713,7 +1807,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
               <div className="space-y-1 text-slate-300 text-[9px]">
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-0.5">
                   <span className="font-bold text-amber-400">4 Players (1v3 / Custom):</span>
-                  <span>1st: 10 | 2nd: 8 | 3rd: 6 | 4th: 4</span>
+                  <span>1st: 10 | 2nd: 8 | 3rd: 6 | 4th: 4 | Elim: 2</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-0.5">
                   <span className="font-bold text-amber-400">3 Players (Custom):</span>
@@ -1732,7 +1826,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
             <ul className="space-y-1.5 text-[11px] font-mono text-slate-300 list-disc list-inside leading-normal">
               <li>5 Lifelines (❤️) per player. 15s timer per turn.</li>
               <li>Failing to roll/move in 15s costs 1 lifeline.</li>
-              <li>0 lifelines = Automatic Elimination (0 coins).</li>
+              <li>0 lifelines = Automatic Elimination (4-Player: 2 Coins with Ad).</li>
               <li>Tokens exit base on rolling a 6.</li>
             </ul>
 
@@ -1755,14 +1849,8 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
         rewardText={
           adPendingAction === 'start_ludo'
             ? 'Watch ad to start Ludo match'
-            : `Watch ad to unlock +${getRewardForPlace(humanPlace)} Coins reward`
+            : `Watch ad to unlock +${getHumanEligibleReward()} Coins reward`
         }
-      />
-
-      {/* Welcome & Info Popup */}
-      <LudoWelcomeModal
-        isOpen={showLudoWelcomePopup}
-        onClose={() => setShowLudoWelcomePopup(false)}
       />
 
     </div>

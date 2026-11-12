@@ -45,20 +45,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveTab, onOpenAuth
           <div className="bg-slate-950/90 backdrop-blur-xl rounded-[14px] p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center shrink-0 group-hover:scale-110 transition">
-                <Coins className="w-7 h-7 text-amber-400 animate-bounce" />
+                <ShieldCheck className="w-7 h-7 text-amber-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="bg-amber-400 text-slate-950 font-black text-[10px] font-mono px-2 py-0.5 rounded uppercase tracking-wider">
-                    20 BONUS COINS WAITING
+                    PROFILE VERIFICATION
                   </span>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-white italic uppercase tracking-tight mt-0.5">
-                  Complete your profile and get 20 coins.
+                  Complete your profile details
                 </h3>
                 <p className="text-xs text-slate-300 font-mono">
-                  Enter your full name & mobile number in Profile to unlock 20 coins instantly!
+                  Enter your full name & mobile number to verify your account and secure your entries.
                 </p>
               </div>
             </div>

@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       displayName: name || user.displayName || 'User',
       mobileNumber: mobile || '',
       city: city || 'Ahmedabad',
-      coinBalance: isCompleted ? 20 : 0,
+      coinBalance: 0,
       totalTicketsBought: 0,
       isBanned: false,
       role: isAdminUser ? 'admin' : 'user',
@@ -123,16 +123,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isProfileCompleted: isCompleted
     };
     await setDoc(doc(db, 'users', user.uid), newProfile);
-
-    if (isCompleted) {
-      await setDoc(doc(db, 'coinTransactions', `welcome_bonus_${user.uid}`), {
-        userUid: user.uid,
-        amount: 20,
-        type: 'welcome_bonus',
-        description: 'Profile Completion Bonus (+20 Coins)',
-        createdAt: new Date().toISOString()
-      });
-    }
   };
 
   const loginWithGoogle = async () => {
@@ -153,59 +143,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) return { awardedCoins: false };
 
     const userRef = doc(db, 'users', currentUser.uid);
-    const bonusTxRef = doc(db, 'coinTransactions', `welcome_bonus_${currentUser.uid}`);
 
     try {
-      const result = await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-          throw new Error('User profile document does not exist.');
-        }
-
-        const userData = userDoc.data() as UserProfile;
-
-        // Backend validation 1: Check if profile is already completed
-        if (userData.isProfileCompleted) {
-          transaction.update(userRef, {
-            displayName: name,
-            mobileNumber: mobile
-          });
-          return { awardedCoins: false };
-        }
-
-        // Backend validation 2: Check if welcome_bonus transaction already exists
-        const bonusTxDoc = await transaction.get(bonusTxRef);
-        if (bonusTxDoc.exists()) {
-          transaction.update(userRef, {
-            displayName: name,
-            mobileNumber: mobile,
-            isProfileCompleted: true
-          });
-          return { awardedCoins: false };
-        }
-
-        // First profile completion: Award 20 coins once and mark completed
-        const currentCoins = typeof userData.coinBalance === 'number' ? userData.coinBalance : 0;
-        transaction.update(userRef, {
-          displayName: name,
-          mobileNumber: mobile,
-          isProfileCompleted: true,
-          coinBalance: currentCoins + 20
-        });
-
-        // Set deterministic transaction document for idempotency
-        transaction.set(bonusTxRef, {
-          userUid: currentUser.uid,
-          amount: 20,
-          type: 'welcome_bonus',
-          description: 'Profile Completion Bonus (+20 Coins)',
-          createdAt: new Date().toISOString()
-        });
-
-        return { awardedCoins: true };
+      await updateDoc(userRef, {
+        displayName: name,
+        mobileNumber: mobile,
+        isProfileCompleted: true
       });
 
-      return result;
+      return { awardedCoins: false };
     } catch (err: any) {
       console.error('Error saving user profile details:', err);
       handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}`);

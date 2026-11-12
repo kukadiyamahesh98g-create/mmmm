@@ -14,7 +14,6 @@ import { LuckyDraw, Ticket } from '../types';
 import { Ticket as TicketIcon, Trophy, ShieldCheck, Coins, Sparkles, Clock, Calendar, Award, HelpCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LuckyDrawSpreadsheet } from './LuckyDrawSpreadsheet';
-import { LuckyDrawWelcomeModal } from './LuckyDrawWelcomeModal';
 
 export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenAuth }) => {
   const { userProfile, currentUser, deductCoins } = useAuth();
@@ -29,7 +28,6 @@ export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
 
   // Helper to categorize draws
   const getCategoryFromDraw = (draw: LuckyDraw): 'daily' | 'weekly' | 'monthly' => {
@@ -305,16 +303,6 @@ export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
             <span className="truncate">MONTHLY</span>
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowWelcomeModal(true)}
-          className="py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl transition flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider shrink-0 cursor-pointer active:scale-95 shadow-sm"
-          title="Lucky Draw Guide & Rules"
-        >
-          <HelpCircle className="w-4 h-4 text-amber-400" />
-          <span className="hidden sm:inline">Guide</span>
-        </button>
       </div>
 
       {/* Active Draw Selection & Purchase Box */}
@@ -461,12 +449,6 @@ export const LuckyDrawSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
           </div>
         </div>
       )}
-
-      {/* Lucky Draw Welcome & Info Popup */}
-      <LuckyDrawWelcomeModal
-        isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
-      />
     </div>
   );
 };

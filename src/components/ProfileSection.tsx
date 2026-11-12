@@ -152,7 +152,7 @@ export const ProfileSection: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const res = await saveUserProfileDetails(trimmedName, trimmedMobile);
+      await saveUserProfileDetails(trimmedName, trimmedMobile);
       
       // Update photo URL if changed
       if (finalPhotoUrl !== userProfile.photoURL) {
@@ -160,11 +160,7 @@ export const ProfileSection: React.FC = () => {
       }
 
       setIsEditing(false);
-      if (res.awardedCoins) {
-        setMsg({ text: '🎉 20 BONUS COINS ADDED! Your profile is completed!', type: 'success' });
-      } else {
-        setMsg({ text: 'Profile updated successfully!', type: 'success' });
-      }
+      setMsg({ text: 'Profile updated successfully!', type: 'success' });
       setTimeout(() => setMsg(null), 5000);
     } catch (err: any) {
       console.error('Error saving profile:', err);
@@ -227,26 +223,26 @@ export const ProfileSection: React.FC = () => {
   return (
     <div className={`space-y-6 animate-in fade-in max-w-4xl mx-auto pb-12 transition-colors duration-300 font-sans ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
       
-      {/* Profile Incomplete Banner - 20 Coins Bonus */}
+      {/* Profile Incomplete Banner */}
       {isProfileIncomplete && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-slate-950 border-2 border-amber-500/50 rounded-3xl p-5 sm:p-6 shadow-[0_0_30px_rgba(245,158,11,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4"
+          className="bg-gradient-to-r from-amber-500/15 via-slate-900 to-slate-950 border border-amber-500/30 rounded-3xl p-5 sm:p-6 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4"
         >
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-amber-500/20 border border-amber-400/40 rounded-2xl flex items-center justify-center shrink-0">
-              <Coins className="w-7 h-7 sm:w-8 sm:h-8 text-amber-400 animate-bounce" />
+              <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-amber-400" />
             </div>
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-mono font-black uppercase tracking-wider mb-1">
-                20 BONUS COINS
+                PROFILE VERIFICATION
               </div>
               <h2 className="text-lg sm:text-xl font-black italic uppercase tracking-tight">
-                Complete your details to claim 20 coins
+                Complete your profile details
               </h2>
               <p className="text-xs text-slate-300 font-mono mt-0.5">
-                Enter your full name and mobile number to receive 20 coins instantly.
+                Enter your full name and mobile number to verify your account.
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { X, Sparkles, ShieldCheck, Coins } from 'lucide-react';
+import { X, Sparkles, ShieldCheck } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -64,17 +64,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </p>
         </div>
 
-        {/* Profile Completion Bonus Callout */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-slate-800 border border-amber-500/30 rounded-2xl flex items-center gap-3">
-          <div className="p-2.5 bg-amber-500/20 border border-amber-400/40 rounded-xl shrink-0">
-            <Coins className="w-6 h-6 text-amber-400" />
+        {/* Account Info Callout */}
+        <div className="mb-6 p-4 bg-slate-800/80 border border-slate-700 rounded-2xl flex items-center gap-3">
+          <div className="p-2.5 bg-emerald-500/20 border border-emerald-400/30 rounded-xl shrink-0">
+            <ShieldCheck className="w-6 h-6 text-emerald-400" />
           </div>
           <div className="text-left">
-            <p className="text-xs font-mono font-bold text-amber-300 uppercase tracking-wide">
-              20 Coins Profile Bonus
+            <p className="text-xs font-mono font-bold text-emerald-300 uppercase tracking-wide">
+              Verified Gaming Account
             </p>
             <p className="text-[11px] text-slate-300 leading-tight">
-              Enter your name & mobile number after signing in to claim 20 free coins!
+              Securely sign in to save your game progress and participate in official draws.
             </p>
           </div>
         </div>
