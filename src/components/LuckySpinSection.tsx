@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Coins, Sparkles, Clock, Info, HelpCircle } from 'lucide-react';
+import { Coins, Sparkles, Clock, Info, HelpCircle, Play, CheckCircle2, Lock, ExternalLink } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { AdModal } from './AdModal';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useSmartLinkAd } from '../hooks/useSmartLinkAd';
+import { SMART_LINK_URL } from '../config/ads';
 import { OfflineOverlay } from './OfflineOverlay';
 
 interface WheelSegment {
@@ -40,8 +41,15 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
   const [wonAmount, setWonAmount] = useState<number | null>(null);
   const [lastSpinTime, setLastSpinTime] = useState<number>(0);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
-  const [showAdModal, setShowAdModal] = useState<boolean>(false);
   const [offlineError, setOfflineError] = useState<string | null>(null);
+  const [spinRewardUnlocked, setSpinRewardUnlocked] = useState<boolean>(false);
+  const [spinRewardClaimed, setSpinRewardClaimed] = useState<boolean>(false);
+  const [spinClaimStatus, setSpinClaimStatus] = useState<string>('');
+
+  const isSpinningRef = useRef<boolean>(false);
+  const isClaimingSpinRef = useRef<boolean>(false);
+  const currentSpinIdRef = useRef<number>(0);
+  const claimedSpinIdRef = useRef<number>(-1);
 
   // Load last spin timestamp from localStorage for current user
   useEffect(() => {
@@ -84,29 +92,101 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const handleSpinButtonClick = async () => {
+  const handleClaimSpinReward = async (overrideAmount?: number) => {
     if (!currentUser || !userProfile) {
       onOpenAuth();
       return;
     }
 
-    if (!canSpin || isSpinning) {
+    const amount = overrideAmount ?? wonAmount;
+    if (!amount || amount <= 0) return;
+
+    if (
+      spinRewardClaimed ||
+      isClaimingSpinRef.current ||
+      claimedSpinIdRef.current === currentSpinIdRef.current
+    ) {
       return;
     }
 
-    const online = await checkOnline();
-    if (!online) {
+    isClaimingSpinRef.current = true;
+    try {
+      const success = await addCoins(
+        amount,
+        'lucky_spin',
+        `Hourly Spin Reward (+${amount} Coins)`
+      );
+      if (success) {
+        claimedSpinIdRef.current = currentSpinIdRef.current;
+        setSpinRewardClaimed(true);
+        setSpinRewardUnlocked(true);
+        setSpinClaimStatus(`🎉 +${amount} Coins collected successfully!`);
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      } else {
+        setSpinClaimStatus('⚠️ Error crediting coins. Tap Collect Coins to retry.');
+      }
+    } catch (err) {
+      console.error('Error claiming spin reward:', err);
+      setSpinClaimStatus('⚠️ Error crediting coins. Please try again.');
+    } finally {
+      isClaimingSpinRef.current = false;
+    }
+  };
+
+  const {
+    adStatus,
+    pendingAction,
+    triggerSmartLinkAd,
+    handleFallbackLinkClick,
+  } = useSmartLinkAd<'spin' | 'claim_spin_reward'>((completedAction) => {
+    if (completedAction === 'spin') {
+      handleSpinWheel();
+    } else if (completedAction === 'claim_spin_reward') {
+      setSpinRewardUnlocked(true);
+      handleClaimSpinReward();
+    }
+  });
+
+  const handleSpinButtonClick = () => {
+    if (!currentUser || !userProfile) {
+      onOpenAuth();
+      return;
+    }
+
+    if (!canSpin || isSpinning || isSpinningRef.current) {
+      return;
+    }
+
+    const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
+    if (!currentlyOnline) {
       setOfflineError('Internet connection is required to watch ad and spin.');
+      checkOnline();
       return;
     }
 
     setOfflineError(null);
-    setShowAdModal(true);
+    triggerSmartLinkAd('spin');
   };
 
-  const handleAdFinished = () => {
-    setShowAdModal(false);
-    handleSpinWheel();
+  const handleClaimRewardButtonClick = () => {
+    if (!currentUser || !userProfile) {
+      onOpenAuth();
+      return;
+    }
+
+    if (!wonAmount || wonAmount <= 0 || spinRewardClaimed) {
+      return;
+    }
+
+    const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
+    if (!currentlyOnline) {
+      setSpinClaimStatus('⚠️ Internet connection is required to watch ad and collect reward.');
+      checkOnline();
+      return;
+    }
+
+    setSpinClaimStatus('');
+    triggerSmartLinkAd('claim_spin_reward');
   };
 
   const handleSpinWheel = async () => {
@@ -115,18 +195,23 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
       return;
     }
 
-    if (!canSpin || isSpinning) {
+    if (!canSpin || isSpinning || isSpinningRef.current) {
       return;
     }
 
+    isSpinningRef.current = true;
     const online = await checkOnline();
     if (!online) {
+      isSpinningRef.current = false;
       setOfflineError('Internet connection is required to watch ad and spin.');
       return;
     }
-
+    currentSpinIdRef.current += 1;
     setIsSpinning(true);
     setWonAmount(null);
+    setSpinRewardUnlocked(false);
+    setSpinRewardClaimed(false);
+    setSpinClaimStatus('');
 
     // Save spin timestamp immediately
     const now = Date.now();
@@ -160,18 +245,13 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
     const nextRotation = rotation + 2880 + delta;
     setRotation(nextRotation);
 
-    setTimeout(async () => {
+    setTimeout(() => {
+      isSpinningRef.current = false;
       setIsSpinning(false);
       setWonAmount(selectedSegment.coins);
-
-      if (selectedSegment.coins > 0) {
-        await addCoins(
-          selectedSegment.coins,
-          'lucky_spin',
-          `Hourly Spin Reward (+${selectedSegment.coins} Coins)`
-        );
-        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      }
+      setSpinRewardUnlocked(false);
+      setSpinRewardClaimed(false);
+      setSpinClaimStatus(`🔒 Watch Ad to collect your +${selectedSegment.coins} Coins reward!`);
     }, 6500);
   };
 
@@ -317,12 +397,81 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
           </div>
         </div>
 
-        {/* Won Message Toast */}
+        {/* Won Reward & Smart Link Claim Section */}
         {wonAmount !== null && (
-          <div className="my-2 py-1.5 px-4 bg-amber-500/20 border border-amber-500/40 rounded-xl text-center animate-bounce">
-            <p className="text-xs font-black text-amber-300 uppercase italic">
-              🎉 You Won +{wonAmount} Coins!
-            </p>
+          <div className="w-full my-2 p-2.5 bg-slate-950/90 border border-amber-500/40 rounded-2xl space-y-2 text-center">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-black text-amber-300 uppercase italic">
+                🎉 You Won +{wonAmount} Coins!
+              </span>
+              {spinRewardClaimed ? (
+                <span className="text-[10px] font-mono font-bold text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Collected
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> Ad Required
+                </span>
+              )}
+            </div>
+
+            {!spinRewardClaimed ? (
+              !spinRewardUnlocked ? (
+                <div className="space-y-1.5">
+                  <button
+                    onClick={handleClaimRewardButtonClick}
+                    disabled={adStatus === 'waiting_return'}
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-black rounded-xl text-xs font-mono uppercase tracking-wider shadow-[0_0_15px_rgba(52,211,153,0.4)] transition active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-slate-950" />
+                    <span>
+                      {adStatus === 'waiting_return' && pendingAction === 'claim_spin_reward'
+                        ? 'Ad Opened — Return to Collect'
+                        : adStatus === 'blocked' && pendingAction === 'claim_spin_reward'
+                        ? `Retry Watch Ad & Claim (+${wonAmount})`
+                        : `Watch Ad & Claim +${wonAmount} Coins`}
+                    </span>
+                  </button>
+
+                  {adStatus === 'blocked' && pendingAction === 'claim_spin_reward' && (
+                    <div className="p-2 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[10px] font-mono text-center space-y-1.5">
+                      <p className="font-bold">⚠️ Popup blocked! Allow popups or tap below to open the ad and collect reward:</p>
+                      <a
+                        href={SMART_LINK_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => handleFallbackLinkClick('claim_spin_reward')}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Open Ad Link & Collect</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleClaimSpinReward()}
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-black rounded-xl text-xs font-mono uppercase tracking-wider shadow-lg transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+                  <span>Collect +{wonAmount} Coins Now!</span>
+                </button>
+              )
+            ) : (
+              <div className="w-full py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs font-mono uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>+{wonAmount} Coins Collected!</span>
+              </div>
+            )}
+
+            {spinClaimStatus && (
+              <p className={`text-[10px] font-mono font-bold ${
+                spinClaimStatus.includes('⚠️') ? 'text-rose-400' : spinClaimStatus.includes('🔒') ? 'text-amber-400' : 'text-emerald-400'
+              }`}>
+                {spinClaimStatus}
+              </p>
+            )}
           </div>
         )}
 
@@ -333,14 +482,41 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
           </div>
         )}
 
+        {/* Popup blocked warning for Spin */}
+        {adStatus === 'blocked' && pendingAction === 'spin' && (
+          <div className="w-full my-1 p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] font-mono text-center space-y-2">
+            <p className="font-bold">⚠️ Browser blocked the ad popup. Allow popups or tap below to open the ad and spin:</p>
+            <a
+              href={SMART_LINK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => handleFallbackLinkClick('spin')}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[11px] uppercase tracking-wider transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open Ad Link & Spin</span>
+            </a>
+          </div>
+        )}
+
+        {adStatus === 'waiting_return' && pendingAction === 'spin' && (
+          <div className="w-full my-1 p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center">
+            Ad opened in a new tab. Return here to spin the wheel!
+          </div>
+        )}
+
         {/* Spin Button */}
         <button
           onClick={handleSpinButtonClick}
-          disabled={isSpinning || !canSpin}
-          className="mt-2 w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+          disabled={isSpinning || !canSpin || adStatus === 'waiting_return'}
+          className="mt-2 w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 active:scale-95"
         >
           {isSpinning ? (
             'SPINNING WHEEL...'
+          ) : adStatus === 'waiting_return' && pendingAction === 'spin' ? (
+            'AD OPENED — RETURN TO SPIN'
+          ) : adStatus === 'blocked' && pendingAction === 'spin' ? (
+            'RETRY WATCH AD AND SPIN'
           ) : canSpin ? (
             'Watch Ad and Spin'
           ) : (
@@ -351,14 +527,6 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
           )}
         </button>
       </div>
-
-      {/* Ad Modal */}
-      <AdModal
-        isOpen={showAdModal}
-        onAdFinished={handleAdFinished}
-        actionType="spin"
-        rewardText="Watch ad and spin to win coins"
-      />
     </div>
   );
 };

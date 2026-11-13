@@ -46,7 +46,7 @@ export const SpinWinPage: React.FC<SpinWinPageProps> = ({ onBack, onOpenAuth }) 
       </div>
 
       {/* Main Wheel View Fitting Single Viewport */}
-      <div className="flex-1 flex flex-col justify-center items-center overflow-hidden py-2">
+      <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto py-2">
         <LuckySpinSection onOpenAuth={onOpenAuth} />
       </div>
 

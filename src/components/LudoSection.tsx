@@ -26,10 +26,12 @@ import {
   UserCheck,
   Lock,
   Sparkles,
+  ExternalLink,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { AdModal } from './AdModal';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useSmartLinkAd } from '../hooks/useSmartLinkAd';
+import { SMART_LINK_URL } from '../config/ads';
 import { OfflineOverlay } from './OfflineOverlay';
 
 const HUMAN_LIKE_NAMES = [
@@ -198,59 +200,20 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
 
   // Ad & Connectivity state
   const { isOnline, checkOnline } = useOnlineStatus();
-  const [showAdModal, setShowAdModal] = useState<boolean>(false);
-  const [adPendingAction, setAdPendingAction] = useState<'start_ludo' | 'claim_reward' | null>(null);
   const [offlineError, setOfflineError] = useState<string | null>(null);
-
-  const handleStartLudoWithAd = async () => {
-    const online = await checkOnline();
-    if (!online) {
-      setOfflineError('Internet connection is required to watch ad and play Ludo.');
-      return;
-    }
-    setOfflineError(null);
-    setAdPendingAction('start_ludo');
-    setShowAdModal(true);
-  };
-
-  const handleClaimRewardWithAd = async () => {
-    if (!currentUser) {
-      onOpenAuth();
-      return;
-    }
-    if (hasClaimedReward) return;
-
-    const prize = getHumanEligibleReward();
-    if (prize <= 0) return;
-
-    const online = await checkOnline();
-    if (!online) {
-      setClaimStatusText('⚠️ Internet connection is required to watch ad and claim reward.');
-      return;
-    }
-    setClaimStatusText('');
-    setAdPendingAction('claim_reward');
-    setShowAdModal(true);
-  };
-
-  const handleAdClosed = () => {
-    setShowAdModal(false);
-    if (adPendingAction === 'claim_reward') {
-      setClaimStatusText('⚠️ Ad was closed early or skipped. Watch the full ad to unlock your coins.');
-    }
-    setAdPendingAction(null);
-  };
+  const isClaimingRef = useRef<boolean>(false);
 
   const handleExecuteClaimReward = async () => {
     if (!currentUser) {
       onOpenAuth();
       return;
     }
-    if (hasClaimedReward) return;
+    if (hasClaimedReward || isClaimingRef.current) return;
 
     const prize = getHumanEligibleReward();
     if (prize <= 0) return;
 
+    isClaimingRef.current = true;
     try {
       const is4Player = activeColors.length === 4;
       const desc = wasHumanEliminated
@@ -259,30 +222,71 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
             humanPlace === 1 ? '1st' : humanPlace === 2 ? '2nd' : humanPlace === 3 ? '3rd' : '4th'
           } Place Reward (+${prize} Coins)`;
 
-      await addCoins(
+      const success = await addCoins(
         prize,
         'ludo_win',
         desc
       );
-      setHasClaimedReward(true);
-      setIsRewardUnlocked(true);
-      setClaimStatusText(`🎉 Ad completed! +${prize} Coins claimed successfully!`);
+      if (success) {
+        setHasClaimedReward(true);
+        setIsRewardUnlocked(true);
+        setClaimStatusText(`🎉 Ad completed! +${prize} Coins collected successfully!`);
+      } else {
+        setClaimStatusText('⚠️ Error crediting coins. Please tap Claim Coins Now to retry.');
+      }
     } catch (err) {
       console.error('Error adding Ludo reward coins:', err);
       setClaimStatusText('⚠️ Error crediting coins. Please try again.');
+    } finally {
+      isClaimingRef.current = false;
     }
   };
 
-  const handleAdFinished = () => {
-    setShowAdModal(false);
-    if (adPendingAction === 'start_ludo') {
+  const {
+    adStatus,
+    pendingAction,
+    triggerSmartLinkAd,
+    handleFallbackLinkClick,
+    resetSmartLinkState,
+  } = useSmartLinkAd<'start_ludo' | 'claim_reward'>((completedAction) => {
+    if (completedAction === 'start_ludo') {
       initGameMatch(humanColor);
       setScreen('play');
-    } else if (adPendingAction === 'claim_reward') {
+    } else if (completedAction === 'claim_reward') {
       setIsRewardUnlocked(true);
       handleExecuteClaimReward();
     }
-    setAdPendingAction(null);
+  });
+
+  const handleStartLudoWithAd = () => {
+    const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
+    if (!currentlyOnline) {
+      setOfflineError('Internet connection is required to watch ad and play Ludo.');
+      checkOnline();
+      return;
+    }
+    setOfflineError(null);
+    triggerSmartLinkAd('start_ludo');
+  };
+
+  const handleClaimRewardWithAd = () => {
+    if (!currentUser) {
+      onOpenAuth();
+      return;
+    }
+    if (hasClaimedReward) return;
+
+    const prize = getHumanEligibleReward();
+    if (prize <= 0) return;
+
+    const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
+    if (!currentlyOnline) {
+      setClaimStatusText('⚠️ Internet connection is required to watch ad and collect coins.');
+      checkOnline();
+      return;
+    }
+    setClaimStatusText('');
+    triggerSmartLinkAd('claim_reward');
   };
 
   // Sound mute sync
@@ -459,6 +463,8 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
     setWasHumanEliminated(false);
     setHasClaimedReward(false);
     setIsRewardUnlocked(false);
+    isClaimingRef.current = false;
+    resetSmartLinkState();
     setChatClaimMessage('');
     setClaimStatusText('');
 
@@ -1377,12 +1383,41 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
             </div>
           )}
 
+          {adStatus === 'blocked' && pendingAction === 'start_ludo' && (
+            <div className="w-full p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] font-mono text-center space-y-2">
+              <p className="font-bold">⚠️ Browser blocked the ad popup. Allow popups or open the link below to continue:</p>
+              <a
+                href={SMART_LINK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => handleFallbackLinkClick('start_ludo')}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[11px] uppercase tracking-wider transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open Ad Link & Play</span>
+              </a>
+            </div>
+          )}
+
+          {adStatus === 'waiting_return' && pendingAction === 'start_ludo' && (
+            <div className="w-full p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center">
+              Ad opened in a new tab. Return here to start Ludo!
+            </div>
+          )}
+
           {/* Direct Start Action Button */}
           <button
             onClick={handleStartLudoWithAd}
-            className="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-widest rounded-xl shadow-lg transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+            disabled={adStatus === 'waiting_return'}
+            className="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-widest rounded-xl shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
           >
-            <span>Watch ad and play Ludo.</span>
+            <span>
+              {adStatus === 'waiting_return' && pendingAction === 'start_ludo'
+                ? 'Ad Opened — Return to Play Ludo'
+                : adStatus === 'blocked' && pendingAction === 'start_ludo'
+                ? 'Retry Watch Ad and Play Ludo'
+                : 'Watch Ad and Play Ludo'}
+            </span>
           </button>
         </div>
       )}
@@ -1570,13 +1605,38 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                   <div className="space-y-2">
                     {!hasClaimedReward ? (
                       !isRewardUnlocked ? (
-                        <button
-                          onClick={handleClaimRewardWithAd}
-                          className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer animate-pulse"
-                        >
-                          <Play className="w-4 h-4 fill-slate-950" />
-                          <span>Watch Ad & Claim Coins (+2 Coins)</span>
-                        </button>
+                        <div className="space-y-2">
+                          <button
+                            onClick={handleClaimRewardWithAd}
+                            disabled={adStatus === 'waiting_return'}
+                            className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed animate-pulse"
+                          >
+                            <Play className="w-4 h-4 fill-slate-950" />
+                            <span>
+                              {adStatus === 'waiting_return' && pendingAction === 'claim_reward'
+                                ? 'Ad Opened — Return to Collect'
+                                : adStatus === 'blocked' && pendingAction === 'claim_reward'
+                                ? 'Retry Watch Ad & Collect (+2)'
+                                : 'Watch Ad and Collect Coins (+2)'}
+                            </span>
+                          </button>
+
+                          {adStatus === 'blocked' && pendingAction === 'claim_reward' && (
+                            <div className="p-2 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] font-mono text-center space-y-1.5">
+                              <p className="font-bold">⚠️ Popup blocked. Allow popups or tap below to open the ad and collect coins:</p>
+                              <a
+                                href={SMART_LINK_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => handleFallbackLinkClick('claim_reward')}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>Open Ad Link & Collect</span>
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <button
                           onClick={handleExecuteClaimReward}
@@ -1724,13 +1784,38 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                   <div className="space-y-2">
                     {!hasClaimedReward ? (
                       !isRewardUnlocked ? (
-                        <button
-                          onClick={handleClaimRewardWithAd}
-                          className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer animate-pulse"
-                        >
-                          <Play className="w-4 h-4 fill-slate-950" />
-                          <span>Watch Ad & Claim Coins (+{getHumanEligibleReward()})</span>
-                        </button>
+                        <div className="space-y-2">
+                          <button
+                            onClick={handleClaimRewardWithAd}
+                            disabled={adStatus === 'waiting_return'}
+                            className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed animate-pulse"
+                          >
+                            <Play className="w-4 h-4 fill-slate-950" />
+                            <span>
+                              {adStatus === 'waiting_return' && pendingAction === 'claim_reward'
+                                ? 'Ad Opened — Return to Collect'
+                                : adStatus === 'blocked' && pendingAction === 'claim_reward'
+                                ? `Retry Watch Ad & Collect (+${getHumanEligibleReward()})`
+                                : `Watch Ad and Collect Coins (+${getHumanEligibleReward()})`}
+                            </span>
+                          </button>
+
+                          {adStatus === 'blocked' && pendingAction === 'claim_reward' && (
+                            <div className="p-2 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] font-mono text-center space-y-1.5">
+                              <p className="font-bold">⚠️ Popup blocked. Allow popups or tap below to open the ad and collect coins:</p>
+                              <a
+                                href={SMART_LINK_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => handleFallbackLinkClick('claim_reward')}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>Open Ad Link & Collect</span>
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <button
                           onClick={handleExecuteClaimReward}
@@ -1839,19 +1924,6 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
           </div>
         </div>
       )}
-
-      {/* Ad Modal */}
-      <AdModal
-        isOpen={showAdModal}
-        onAdFinished={handleAdFinished}
-        onClose={handleAdClosed}
-        actionType={adPendingAction}
-        rewardText={
-          adPendingAction === 'start_ludo'
-            ? 'Watch ad to start Ludo match'
-            : `Watch ad to unlock +${getHumanEligibleReward()} Coins reward`
-        }
-      />
 
     </div>
   );
