@@ -245,8 +245,9 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
   const {
     adStatus,
     pendingAction,
-    triggerSmartLinkAd,
-    handleFallbackLinkClick,
+    canConfirmReturn,
+    startSmartLinkReturn,
+    confirmManualReturn,
     resetSmartLinkState,
   } = useSmartLinkAd<'start_ludo' | 'claim_reward'>((completedAction) => {
     if (completedAction === 'start_ludo') {
@@ -258,35 +259,52 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
     }
   });
 
-  const handleStartLudoWithAd = () => {
+  const handleStartLudoWithAd = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (adStatus === 'waiting_return') {
+      e.preventDefault();
+      return;
+    }
     const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
     if (!currentlyOnline) {
+      e.preventDefault();
       setOfflineError('Internet connection is required to watch ad and play Ludo.');
       checkOnline();
       return;
     }
     setOfflineError(null);
-    triggerSmartLinkAd('start_ludo');
+    startSmartLinkReturn('start_ludo');
   };
 
-  const handleClaimRewardWithAd = () => {
+  const handleClaimRewardWithAd = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (adStatus === 'waiting_return') {
+      e.preventDefault();
+      return;
+    }
     if (!currentUser) {
+      e.preventDefault();
       onOpenAuth();
       return;
     }
-    if (hasClaimedReward) return;
+    if (hasClaimedReward) {
+      e.preventDefault();
+      return;
+    }
 
     const prize = getHumanEligibleReward();
-    if (prize <= 0) return;
+    if (prize <= 0) {
+      e.preventDefault();
+      return;
+    }
 
     const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
     if (!currentlyOnline) {
+      e.preventDefault();
       setClaimStatusText('⚠️ Internet connection is required to watch ad and collect coins.');
       checkOnline();
       return;
     }
     setClaimStatusText('');
-    triggerSmartLinkAd('claim_reward');
+    startSmartLinkReturn('claim_reward');
   };
 
   // Sound mute sync
@@ -1385,12 +1403,12 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
 
           {adStatus === 'blocked' && pendingAction === 'start_ludo' && (
             <div className="w-full p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] font-mono text-center space-y-2">
-              <p className="font-bold">⚠️ Browser blocked the ad popup. Allow popups or open the link below to continue:</p>
+              <p className="font-bold">⚠️ Browser blocked the ad popup. Allow popups or tap below to open the ad:</p>
               <a
                 href={SMART_LINK_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => handleFallbackLinkClick('start_ludo')}
+                onClick={() => startSmartLinkReturn('start_ludo')}
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[11px] uppercase tracking-wider transition"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -1400,16 +1418,30 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
           )}
 
           {adStatus === 'waiting_return' && pendingAction === 'start_ludo' && (
-            <div className="w-full p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center">
-              Ad opened in a new tab. Return here to start Ludo!
+            <div className="w-full p-2.5 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center space-y-2">
+              <p>Ad opened in a new tab. Return here to start Ludo!</p>
+              {canConfirmReturn && (
+                <button
+                  type="button"
+                  onClick={confirmManualReturn}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[11px] uppercase tracking-wider transition cursor-pointer"
+                >
+                  <span>I&apos;ve Returned — Play Ludo</span>
+                </button>
+              )}
             </div>
           )}
 
-          {/* Direct Start Action Button */}
-          <button
+          {/* Direct Start Action Link */}
+          <a
+            href={SMART_LINK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={handleStartLudoWithAd}
-            disabled={adStatus === 'waiting_return'}
-            className="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-widest rounded-xl shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            aria-disabled={adStatus === 'waiting_return'}
+            className={`w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs font-mono uppercase tracking-widest rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 ${
+              adStatus === 'waiting_return' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+            }`}
           >
             <span>
               {adStatus === 'waiting_return' && pendingAction === 'start_ludo'
@@ -1418,7 +1450,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                 ? 'Retry Watch Ad and Play Ludo'
                 : 'Watch Ad and Play Ludo'}
             </span>
-          </button>
+          </a>
         </div>
       )}
 
@@ -1606,10 +1638,15 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                     {!hasClaimedReward ? (
                       !isRewardUnlocked ? (
                         <div className="space-y-2">
-                          <button
+                          <a
+                            href={SMART_LINK_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             onClick={handleClaimRewardWithAd}
-                            disabled={adStatus === 'waiting_return'}
-                            className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed animate-pulse"
+                            aria-disabled={adStatus === 'waiting_return'}
+                            className={`w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 animate-pulse ${
+                              adStatus === 'waiting_return' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                            }`}
                           >
                             <Play className="w-4 h-4 fill-slate-950" />
                             <span>
@@ -1619,7 +1656,22 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                                 ? 'Retry Watch Ad & Collect (+2)'
                                 : 'Watch Ad and Collect Coins (+2)'}
                             </span>
-                          </button>
+                          </a>
+
+                          {adStatus === 'waiting_return' && pendingAction === 'claim_reward' && (
+                            <div className="p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center space-y-1.5">
+                              <p>Ad opened in a new tab. Return here to collect +2 Coins!</p>
+                              {canConfirmReturn && (
+                                <button
+                                  type="button"
+                                  onClick={confirmManualReturn}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition cursor-pointer"
+                                >
+                                  <span>I&apos;ve Returned — Collect +2 Coins</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
 
                           {adStatus === 'blocked' && pendingAction === 'claim_reward' && (
                             <div className="p-2 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] font-mono text-center space-y-1.5">
@@ -1628,7 +1680,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                                 href={SMART_LINK_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={() => handleFallbackLinkClick('claim_reward')}
+                                onClick={() => startSmartLinkReturn('claim_reward')}
                                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition"
                               >
                                 <ExternalLink className="w-3 h-3" />
@@ -1785,10 +1837,15 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                     {!hasClaimedReward ? (
                       !isRewardUnlocked ? (
                         <div className="space-y-2">
-                          <button
+                          <a
+                            href={SMART_LINK_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             onClick={handleClaimRewardWithAd}
-                            disabled={adStatus === 'waiting_return'}
-                            className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed animate-pulse"
+                            aria-disabled={adStatus === 'waiting_return'}
+                            className={`w-full py-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs font-mono uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(251,191,36,0.4)] active:scale-95 flex items-center justify-center gap-2 animate-pulse ${
+                              adStatus === 'waiting_return' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                            }`}
                           >
                             <Play className="w-4 h-4 fill-slate-950" />
                             <span>
@@ -1798,7 +1855,22 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                                 ? `Retry Watch Ad & Collect (+${getHumanEligibleReward()})`
                                 : `Watch Ad and Collect Coins (+${getHumanEligibleReward()})`}
                             </span>
-                          </button>
+                          </a>
+
+                          {adStatus === 'waiting_return' && pendingAction === 'claim_reward' && (
+                            <div className="p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center space-y-1.5">
+                              <p>Ad opened in a new tab. Return here to collect +{getHumanEligibleReward()} Coins!</p>
+                              {canConfirmReturn && (
+                                <button
+                                  type="button"
+                                  onClick={confirmManualReturn}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition cursor-pointer"
+                                >
+                                  <span>I&apos;ve Returned — Collect +{getHumanEligibleReward()} Coins</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
 
                           {adStatus === 'blocked' && pendingAction === 'claim_reward' && (
                             <div className="p-2 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] font-mono text-center space-y-1.5">
@@ -1807,7 +1879,7 @@ export const LudoSection: React.FC<LudoSectionProps> = ({ onOpenAuth, onBack }) 
                                 href={SMART_LINK_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={() => handleFallbackLinkClick('claim_reward')}
+                                onClick={() => startSmartLinkReturn('claim_reward')}
                                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition"
                               >
                                 <ExternalLink className="w-3 h-3" />

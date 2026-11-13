@@ -6,44 +6,51 @@ export type SmartLinkStatus = 'idle' | 'waiting_return' | 'blocked';
 interface UseSmartLinkAdResult<T extends string> {
   adStatus: SmartLinkStatus;
   pendingAction: T | null;
+  canConfirmReturn: boolean;
+  startSmartLinkReturn: (action: T) => void;
   triggerSmartLinkAd: (action: T) => void;
-  handleFallbackLinkClick: (action: T) => void;
+  confirmManualReturn: () => void;
   resetSmartLinkState: () => void;
 }
 
 /**
- * Manages opening the centralized Smart Link in a new tab/window on user click,
- * preventing duplicate opens, detecting popup blocking, and invoking `onReturn`
- * when the user returns to the app on desktop or mobile.
+ * Tracks Smart Link ad opening and detects when the user returns to the app
+ * on desktop, mobile, and embedded iframe environments.
  */
 export function useSmartLinkAd<T extends string>(
   onReturn: (action: T) => void
 ): UseSmartLinkAdResult<T> {
   const [adStatus, setAdStatus] = useState<SmartLinkStatus>('idle');
   const [pendingAction, setPendingAction] = useState<T | null>(null);
+  const [canConfirmReturn, setCanConfirmReturn] = useState<boolean>(false);
 
   const onReturnRef = useRef(onReturn);
   onReturnRef.current = onReturn;
 
   const isWaitingRef = useRef<boolean>(false);
+  const pendingActionRef = useRef<T | null>(null);
   const openedAtRef = useRef<number>(0);
   const leftAppRef = useRef<boolean>(false);
   const winRef = useRef<Window | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const completeFnRef = useRef<(() => void) | null>(null);
 
   const cleanupTracking = useCallback(() => {
     if (cleanupRef.current) {
       cleanupRef.current();
       cleanupRef.current = null;
     }
+    completeFnRef.current = null;
     winRef.current = null;
     isWaitingRef.current = false;
+    pendingActionRef.current = null;
   }, []);
 
   const resetSmartLinkState = useCallback(() => {
     cleanupTracking();
     setAdStatus('idle');
     setPendingAction(null);
+    setCanConfirmReturn(false);
   }, [cleanupTracking]);
 
   useEffect(() => {
@@ -57,11 +64,13 @@ export function useSmartLinkAd<T extends string>(
       cleanupTracking();
 
       isWaitingRef.current = true;
+      pendingActionRef.current = action;
       openedAtRef.current = Date.now();
       leftAppRef.current = false;
 
       setAdStatus('waiting_return');
       setPendingAction(action);
+      setCanConfirmReturn(false);
 
       let completed = false;
 
@@ -71,8 +80,11 @@ export function useSmartLinkAd<T extends string>(
         cleanupTracking();
         setAdStatus('idle');
         setPendingAction(null);
+        setCanConfirmReturn(false);
         onReturnRef.current(action);
       };
+
+      completeFnRef.current = completeReturn;
 
       const handleBlurOrHide = () => {
         if (document.visibilityState === 'hidden') {
@@ -110,6 +122,12 @@ export function useSmartLinkAd<T extends string>(
       window.addEventListener('focus', handleFocusOrPageShow);
       window.addEventListener('pageshow', handleFocusOrPageShow);
 
+      const confirmTimer = window.setTimeout(() => {
+        if (!completed) {
+          setCanConfirmReturn(true);
+        }
+      }, 1500);
+
       const pollInterval = window.setInterval(() => {
         const elapsed = Date.now() - openedAtRef.current;
         if (winRef.current && winRef.current.closed && elapsed >= 350) {
@@ -123,15 +141,24 @@ export function useSmartLinkAd<T extends string>(
         window.removeEventListener('pagehide', handleBlurOrHide);
         window.removeEventListener('focus', handleFocusOrPageShow);
         window.removeEventListener('pageshow', handleFocusOrPageShow);
+        window.clearTimeout(confirmTimer);
         window.clearInterval(pollInterval);
       };
     },
     [cleanupTracking]
   );
 
+  const startSmartLinkReturn = useCallback(
+    (action: T) => {
+      if (isWaitingRef.current) return;
+      winRef.current = null;
+      startReturnTracking(action);
+    },
+    [startReturnTracking]
+  );
+
   const triggerSmartLinkAd = useCallback(
     (action: T) => {
-      // Prevent multiple clicks from opening multiple tabs
       if (isWaitingRef.current) return;
 
       let openedWin: Window | null = null;
@@ -150,7 +177,7 @@ export function useSmartLinkAd<T extends string>(
       try {
         openedWin.opener = null;
       } catch {
-        // Ignore cross-origin restriction if thrown
+        // Ignore cross-origin opener assignment restriction
       }
 
       winRef.current = openedWin;
@@ -159,20 +186,19 @@ export function useSmartLinkAd<T extends string>(
     [startReturnTracking]
   );
 
-  const handleFallbackLinkClick = useCallback(
-    (action: T) => {
-      if (isWaitingRef.current) return;
-      winRef.current = null;
-      startReturnTracking(action);
-    },
-    [startReturnTracking]
-  );
+  const confirmManualReturn = useCallback(() => {
+    if (completeFnRef.current) {
+      completeFnRef.current();
+    }
+  }, []);
 
   return {
     adStatus,
     pendingAction,
+    canConfirmReturn,
+    startSmartLinkReturn,
     triggerSmartLinkAd,
-    handleFallbackLinkClick,
+    confirmManualReturn,
     resetSmartLinkState,
   };
 }

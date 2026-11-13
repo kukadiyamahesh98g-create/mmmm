@@ -136,8 +136,9 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
   const {
     adStatus,
     pendingAction,
-    triggerSmartLinkAd,
-    handleFallbackLinkClick,
+    canConfirmReturn,
+    startSmartLinkReturn,
+    confirmManualReturn,
   } = useSmartLinkAd<'spin' | 'claim_spin_reward'>((completedAction) => {
     if (completedAction === 'spin') {
       handleSpinWheel();
@@ -147,46 +148,62 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
     }
   });
 
-  const handleSpinButtonClick = () => {
+  const handleSpinButtonClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (adStatus === 'waiting_return') {
+      e.preventDefault();
+      return;
+    }
+
     if (!currentUser || !userProfile) {
+      e.preventDefault();
       onOpenAuth();
       return;
     }
 
     if (!canSpin || isSpinning || isSpinningRef.current) {
+      e.preventDefault();
       return;
     }
 
     const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
     if (!currentlyOnline) {
+      e.preventDefault();
       setOfflineError('Internet connection is required to watch ad and spin.');
       checkOnline();
       return;
     }
 
     setOfflineError(null);
-    triggerSmartLinkAd('spin');
+    startSmartLinkReturn('spin');
   };
 
-  const handleClaimRewardButtonClick = () => {
+  const handleClaimRewardButtonClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (adStatus === 'waiting_return') {
+      e.preventDefault();
+      return;
+    }
+
     if (!currentUser || !userProfile) {
+      e.preventDefault();
       onOpenAuth();
       return;
     }
 
     if (!wonAmount || wonAmount <= 0 || spinRewardClaimed) {
+      e.preventDefault();
       return;
     }
 
     const currentlyOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
     if (!currentlyOnline) {
+      e.preventDefault();
       setSpinClaimStatus('⚠️ Internet connection is required to watch ad and collect reward.');
       checkOnline();
       return;
     }
 
     setSpinClaimStatus('');
-    triggerSmartLinkAd('claim_spin_reward');
+    startSmartLinkReturn('claim_spin_reward');
   };
 
   const handleSpinWheel = async () => {
@@ -418,10 +435,15 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
             {!spinRewardClaimed ? (
               !spinRewardUnlocked ? (
                 <div className="space-y-1.5">
-                  <button
+                  <a
+                    href={SMART_LINK_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     onClick={handleClaimRewardButtonClick}
-                    disabled={adStatus === 'waiting_return'}
-                    className="w-full py-2.5 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-black rounded-xl text-xs font-mono uppercase tracking-wider shadow-[0_0_15px_rgba(52,211,153,0.4)] transition active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    aria-disabled={adStatus === 'waiting_return'}
+                    className={`w-full py-2.5 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-black rounded-xl text-xs font-mono uppercase tracking-wider shadow-[0_0_15px_rgba(52,211,153,0.4)] transition active:scale-95 flex items-center justify-center gap-1.5 ${
+                      adStatus === 'waiting_return' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                    }`}
                   >
                     <Play className="w-3.5 h-3.5 fill-slate-950" />
                     <span>
@@ -431,7 +453,22 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
                         ? `Retry Watch Ad & Claim (+${wonAmount})`
                         : `Watch Ad & Claim +${wonAmount} Coins`}
                     </span>
-                  </button>
+                  </a>
+
+                  {adStatus === 'waiting_return' && pendingAction === 'claim_spin_reward' && (
+                    <div className="p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[10px] font-mono font-bold text-center space-y-1.5">
+                      <p>Ad opened in a new tab. Return here to collect +{wonAmount} Coins!</p>
+                      {canConfirmReturn && (
+                        <button
+                          type="button"
+                          onClick={confirmManualReturn}
+                          className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition cursor-pointer"
+                        >
+                          <span>I&apos;ve Returned — Collect +{wonAmount} Coins</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {adStatus === 'blocked' && pendingAction === 'claim_spin_reward' && (
                     <div className="p-2 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-[10px] font-mono text-center space-y-1.5">
@@ -440,7 +477,7 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
                         href={SMART_LINK_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => handleFallbackLinkClick('claim_spin_reward')}
+                        onClick={() => startSmartLinkReturn('claim_spin_reward')}
                         className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition"
                       >
                         <ExternalLink className="w-3 h-3" />
@@ -490,7 +527,7 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
               href={SMART_LINK_URL}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => handleFallbackLinkClick('spin')}
+              onClick={() => startSmartLinkReturn('spin')}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[11px] uppercase tracking-wider transition"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -500,32 +537,53 @@ export const LuckySpinSection: React.FC<{ onOpenAuth: () => void }> = ({ onOpenA
         )}
 
         {adStatus === 'waiting_return' && pendingAction === 'spin' && (
-          <div className="w-full my-1 p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center">
-            Ad opened in a new tab. Return here to spin the wheel!
+          <div className="w-full my-1 p-2.5 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-[11px] font-mono font-bold text-center space-y-2">
+            <p>Ad opened in a new tab. Return here to spin the wheel!</p>
+            {canConfirmReturn && (
+              <button
+                type="button"
+                onClick={confirmManualReturn}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[11px] uppercase tracking-wider transition cursor-pointer"
+              >
+                <span>I&apos;ve Returned — Spin Wheel</span>
+              </button>
+            )}
           </div>
         )}
 
-        {/* Spin Button */}
-        <button
-          onClick={handleSpinButtonClick}
-          disabled={isSpinning || !canSpin || adStatus === 'waiting_return'}
-          className="mt-2 w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 active:scale-95"
-        >
-          {isSpinning ? (
-            'SPINNING WHEEL...'
-          ) : adStatus === 'waiting_return' && pendingAction === 'spin' ? (
-            'AD OPENED — RETURN TO SPIN'
-          ) : adStatus === 'blocked' && pendingAction === 'spin' ? (
-            'RETRY WATCH AD AND SPIN'
-          ) : canSpin ? (
-            'Watch Ad and Spin'
-          ) : (
-            <>
-              <Clock className="w-4 h-4 animate-spin" />
-              <span>NEXT SPIN IN {formatCountdown(secondsRemaining)}</span>
-            </>
-          )}
-        </button>
+        {/* Spin Action */}
+        {canSpin && !isSpinning ? (
+          <a
+            href={SMART_LINK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleSpinButtonClick}
+            aria-disabled={adStatus === 'waiting_return'}
+            className={`mt-2 w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg transition flex items-center justify-center gap-2 active:scale-95 ${
+              adStatus === 'waiting_return' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+            }`}
+          >
+            {adStatus === 'waiting_return' && pendingAction === 'spin'
+              ? 'AD OPENED — RETURN TO SPIN'
+              : adStatus === 'blocked' && pendingAction === 'spin'
+              ? 'RETRY WATCH AD AND SPIN'
+              : 'Watch Ad and Spin'}
+          </a>
+        ) : (
+          <button
+            disabled
+            className="mt-2 w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg transition opacity-50 cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isSpinning ? (
+              'SPINNING WHEEL...'
+            ) : (
+              <>
+                <Clock className="w-4 h-4 animate-spin" />
+                <span>NEXT SPIN IN {formatCountdown(secondsRemaining)}</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
